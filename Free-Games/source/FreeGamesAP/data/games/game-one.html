@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coin Dodge · Free Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;--on-blue:#fff;
+  --yellow:#ffc93c;--coral:#ff6b6b;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;--on-blue:#10112a;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:1rem;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+header{width:min(100%,440px);display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;box-shadow:inset 0 0 0 2px var(--line);background:var(--surface)}
+h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
+.stats{width:min(100%,440px);display:flex;justify-content:space-between;font-weight:700}
+.stats span{background:var(--surface);padding:.35rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{position:relative;width:min(100%,440px,calc((100dvh - 190px) * 2 / 3));aspect-ratio:2/3;border-radius:24px;overflow:hidden;background:#1d1f40;touch-action:none;box-shadow:0 0 0 3px var(--line)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;text-align:center;padding:1.5rem;background:rgba(20,21,46,.82);color:#eef0ff}
+.overlay[hidden]{display:none}
+.overlay h2{font:800 2.2rem var(--display);margin:0;letter-spacing:-.02em}
+.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.85rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer;margin-top:.5rem}
+.pad{width:min(100%,440px);display:none;gap:.75rem}
+.pad button{flex:1;padding:.9rem;border:0;border-radius:16px;font:700 1.4rem var(--body);background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line);touch-action:manipulation}
+@media (pointer:coarse){.pad{display:flex}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1>Coin Dodge</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="polite">
+  <span>Score <b id="score">0</b></span>
+  <span>Best <b id="best">0</b></span>
+  <span id="lives" aria-label="Lives">♥♥♥</span>
+</div>
+<div class="stage" id="stage">
+  <canvas id="c" width="400" height="600" aria-label="Coin Dodge game board"></canvas>
+  <div class="overlay" id="overlay">
+    <h2 id="otitle">Coin Dodge</h2>
+    <p id="otext">Catch the gold coins. Dodge the red blocks. You have 3 lives.</p>
+    <button class="btn" id="start">Start game</button>
+    <p style="font-size:.9rem">Move with ← → or A / D, or drag on the screen.</p>
+  </div>
+</div>
+<div class="pad"><button id="left" aria-label="Move left">◀</button><button id="right" aria-label="Move right">▶</button></div>
+
+<script>
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+const W = 400, H = 600;
+const $ = id => document.getElementById(id);
+let best = 0;
+try { best = +localStorage.getItem("coindodge-best") || 0; } catch(e) {}
+$("best").textContent = best;
+
+
+/* Audio (synthesized, no files needed) */
+let actx = null, muted = false, musicTimer = null;
+try { muted = localStorage.getItem("coindodge-muted") === "1"; } catch(e) {}
+function ac(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(freq, dur, type = "sine", vol = 0.12, when = 0, slideTo){
+  if (muted) return;
+  const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + when;
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+  g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  coin(){ tone(880, .08, "square", .07); tone(1320, .12, "square", .07, .07); },
+  hit(){ tone(180, .35, "sawtooth", .16, 0, 50); },
+  start(){ [392, 523, 659].forEach((f, i) => tone(f, .12, "square", .07, i * .09)); },
+  over(){ [392, 330, 262, 196].forEach((f, i) => tone(f, .22, "triangle", .12, i * .16)); }
+};
+function startMusic(){
+  stopMusic();
+  const notes = [262, 330, 392, 330, 294, 349, 440, 349]; let i = 0;
+  musicTimer = setInterval(() => {
+    if (state !== "playing") return;
+    const n = notes[i % 8];
+    tone(n, .18, "triangle", .045);
+    if (i % 4 === 0) tone(n / 2, .35, "sine", .07);
+    i++;
+  }, 230);
+}
+function stopMusic(){ clearInterval(musicTimer); musicTimer = null; }
+const muteBtn = $("mute");
+function paintMute(){ muteBtn.textContent = muted ? "🔇" : "🔊"; muteBtn.setAttribute("aria-pressed", muted); muteBtn.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound"); }
+muteBtn.addEventListener("click", () => {
+  muted = !muted; paintMute();
+  try { localStorage.setItem("coindodge-muted", muted ? "1" : "0"); } catch(e) {}
+  if (!muted) ac();
+});
+paintMute();
+
+let state = "ready", score, lives, items, px, target, t, spawnT, last, hitFlash, dir = 0;
+const P = { w: 64, h: 18, y: H - 48 };
+
+function reset(){
+  score = 0; lives = 3; items = []; px = W/2; target = W/2; t = 0; spawnT = 0; hitFlash = 0;
+  updateHud();
+}
+function updateHud(){
+  $("score").textContent = score;
+  $("lives").textContent = "♥".repeat(lives) + "♡".repeat(3 - lives);
+}
+function start(){
+  reset(); state = "playing"; $("overlay").hidden = true; last = performance.now();
+  ac(); sfx.start(); startMusic();
+  requestAnimationFrame(loop);
+}
+function end(){
+  state = "over"; stopMusic(); sfx.over();
+  if (score > best){
+    best = score; $("best").textContent = best;
+    try { localStorage.setItem("coindodge-best", best); } catch(e) {}
+  }
+  $("otitle").textContent = "Game over";
+  $("otext").textContent = "You scored " + score + ". Best: " + best + ".";
+  $("start").textContent = "Play again";
+  $("overlay").hidden = false;
+  $("start").focus();
+}
+function spawn(){
+  const coin = Math.random() < 0.68;
+  const size = coin ? 24 : 30;
+  items.push({ coin, x: size/2 + Math.random() * (W - size), y: -size, s: size,
+    v: 130 + Math.min(score, 60) * 4.5 + Math.min(Math.max(score - 60, 0), 200) * 0.8 + Math.random() * 40, r: Math.random() * 6 });
+}
+function loop(now){
+  if (state !== "playing") return;
+  const dt = Math.min((now - last) / 1000, 0.05); last = now; t += dt;
+
+  target += dir * 380 * dt;
+  target = Math.max(P.w/2, Math.min(W - P.w/2, target));
+  px += (target - px) * Math.min(1, dt * 18);
+
+  spawnT -= dt;
+  if (spawnT <= 0){ spawn(); spawnT = Math.max(0.28, 0.8 - score * 0.008); }
+
+  for (let i = items.length - 1; i >= 0; i--){
+    const it = items[i]; it.y += it.v * dt; it.r += dt * 3;
+    const hit = Math.abs(it.x - px) < (it.s + P.w) / 2 - 4 && Math.abs(it.y - P.y) < (it.s + P.h) / 2;
+    if (hit){
+      if (it.coin){ score++; sfx.coin(); } else { lives--; hitFlash = 0.25; if (lives > 0) sfx.hit(); }
+      items.splice(i, 1); updateHud();
+      if (lives <= 0){ draw(); end(); return; }
+    } else if (it.y > H + 40) items.splice(i, 1);
+  }
+  hitFlash = Math.max(0, hitFlash - dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+function rr(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); }
+function draw(){
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#1d1f40"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(255,255,255,.06)";
+  for (let i = 1; i < 4; i++) ctx.fillRect(i * W / 4 - 1, 0, 2, H);
+  for (const it of items){
+    if (it.coin){
+      ctx.fillStyle = "#ffc93c"; ctx.beginPath(); ctx.arc(it.x, it.y, it.s/2, 0, 7); ctx.fill();
+      ctx.fillStyle = "#e0a200"; ctx.beginPath(); ctx.arc(it.x, it.y, it.s/4, 0, 7); ctx.fill();
+    } else {
+      ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.r);
+      ctx.fillStyle = "#ff6b6b"; rr(-it.s/2, -it.s/2, it.s, it.s, 7); ctx.restore();
+    }
+  }
+  ctx.fillStyle = hitFlash > 0 ? "#ff6b6b" : "#6f7bff";
+  rr(px - P.w/2, P.y - P.h/2, P.w, P.h, 9);
+  ctx.fillStyle = "#ffc93c"; ctx.beginPath(); ctx.arc(px, P.y - P.h/2 - 2, 6, 0, 7); ctx.fill();
+}
+
+/* Input */
+const keys = { l: false, r: false };
+function setDir(){ dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0); }
+addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.l = true;
+  else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.r = true;
+  else return;
+  setDir(); e.preventDefault();
+});
+addEventListener("keyup", e => {
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.l = false;
+  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.r = false;
+  setDir();
+});
+function pointerX(e){
+  const r = cv.getBoundingClientRect();
+  target = (e.clientX - r.left) / r.width * W;
+}
+let dragging = false;
+$("stage").addEventListener("pointerdown", e => { if (state === "playing"){ dragging = true; pointerX(e); } });
+addEventListener("pointermove", e => { if (dragging) pointerX(e); });
+addEventListener("pointerup", () => dragging = false);
+function hold(id, k){
+  const b = $(id);
+  const on = e => { e.preventDefault(); keys[k] = true; setDir(); };
+  const off = () => { keys[k] = false; setDir(); };
+  b.addEventListener("pointerdown", on);
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, off));
+}
+hold("left", "l"); hold("right", "r");
+$("start").addEventListener("click", () => {
+  if (state === "paused"){ state = "playing"; startMusic(); $("overlay").hidden = true; last = performance.now(); requestAnimationFrame(loop); }
+  else start();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && state === "playing"){
+    state = "paused"; stopMusic(); $("otitle").textContent = "Paused"; $("otext").textContent = "Your game is waiting.";
+    $("start").textContent = "Resume"; $("overlay").hidden = false;
+  }
+});
+reset(); draw();
+</script>
+</body>
+</html>

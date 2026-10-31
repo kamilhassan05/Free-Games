@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hop Across · Free Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;
+  --yellow:#ffc93c;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:1rem;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+header,.stats,.stage,.pad{width:min(100%,400px,calc((100dvh - 260px) * 10 / 13));min-width:min(100%,300px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;box-shadow:inset 0 0 0 2px var(--line);background:var(--surface)}
+h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.stats{display:flex;justify-content:space-between;gap:.5rem;font-weight:700}
+.stats span{background:var(--surface);padding:.35rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{position:relative;aspect-ratio:10/13;border-radius:24px;overflow:hidden;background:#1d1f40;touch-action:none;box-shadow:0 0 0 3px var(--line);user-select:none;-webkit-user-select:none}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:.6rem;text-align:center;padding:1.25rem;background:rgba(20,21,46,.9);color:#eef0ff}
+.overlay[hidden]{display:none}
+.overlay h2{font:800 2.1rem var(--display);margin:0;letter-spacing:-.02em}
+.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.8rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer}
+.btn.ghost{background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85}
+.picks{display:flex;flex-direction:column;gap:.5rem;width:min(100%,260px);margin-top:.3rem}
+.picks .btn{width:100%;padding:.65rem 2rem}.picks small{display:block;font-weight:500;opacity:.75}
+.pad{display:none;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,50px);gap:8px;max-width:240px}
+.pad button{border:0;border-radius:14px;background:var(--surface);color:var(--ink);font:700 1.4rem var(--body);box-shadow:inset 0 0 0 2px var(--line);touch-action:manipulation}
+.pad .u{grid-column:2}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
+@media (pointer:coarse){.pad{display:grid}}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1>Hop Across</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="polite">
+  <span>Score <b id="score">0</b></span>
+  <span>Best <b id="best">0</b></span>
+  <span>Stage <b id="stagen">1</b></span>
+  <span id="lives" aria-label="Lives">♥♥♥</span>
+</div>
+<div class="stage" id="stage">
+  <canvas id="c" width="400" height="520" aria-label="Hop Across game board"></canvas>
+  <div class="overlay" id="menu">
+    <h2>Hop Across</h2>
+    <p>Get the chick home. Dodge the cars, then hop across the river on logs and turtles. Fill all five nests.</p>
+    <div class="picks">
+      <button class="btn pick" data-l="easy">Easy<small>5 lives, slow traffic</small></button>
+      <button class="btn pick" data-l="medium">Medium<small>3 lives</small></button>
+      <button class="btn pick" data-l="hard">Hard<small>3 lives, fast, diving turtles</small></button>
+    </div>
+    <p style="font-size:.9rem">Arrow keys / W A S D, swipe, or the buttons below.</p>
+  </div>
+  <div class="overlay" id="msg" hidden>
+    <h2 id="mtitle"></h2>
+    <p id="mtext"></p>
+    <button class="btn" id="mainBtn"></button>
+    <button class="btn ghost" id="altBtn">Change level</button>
+  </div>
+</div>
+<div class="pad" aria-label="Direction buttons">
+  <button class="u" data-d="0,-1" aria-label="Up">▲</button>
+  <button class="l" data-d="-1,0" aria-label="Left">◀</button>
+  <button class="d" data-d="0,1" aria-label="Down">▼</button>
+  <button class="r" data-d="1,0" aria-label="Right">▶</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cv = $("c"), ctx = cv.getContext("2d"), W = 400, H = 520, T = 40, ROWS = 13, START = 12;
+const LEVELS = {
+  easy:   { lives: 5, speed: .8,  time: 40, dive: false },
+  medium: { lives: 3, speed: 1,   time: 32, dive: false },
+  hard:   { lives: 3, speed: 1.25, time: 26, dive: true }
+};
+const SLOTS = [40, 120, 200, 280, 360];
+const CAR_COLORS = ["#ff6b6b", "#ffc93c", "#a78bfa", "#ff9a5c", "#4fd3b3", "#eef0ff"];
+let level = "medium", cfg = LEVELS.medium, state = "menu", stage = 1;
+let lanes, p, score, lives, filled, best = 0, last, t = 0, timeLeft, minRow, dyingT = 0, deathMsg = "", parts, tickedAt = 0, resumeTo = "play";
+
+/* Audio (synthesized, no files needed) */
+let actx = null, muted = false;
+try { muted = localStorage.getItem("hop-muted") === "1"; } catch(e) {}
+function ac(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(f, d, type = "sine", v = .1, when = 0, to){
+  if (muted) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + when;
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+  g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + .02);
+}
+const sfx = {
+  hop(){ tone(330, .08, "square", .06, 0, 520); },
+  splash(){ tone(500, .3, "sawtooth", .07, 0, 90); },
+  crash(){ tone(160, .35, "sawtooth", .13, 0, 45); },
+  nest(){ [523, 659, 784, 1047].forEach((f, i) => tone(f, .12, "square", .06, i * .07)); },
+  clear(){ [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, .13, "square", .06, i * .09)); },
+  tick(){ tone(900, .05, "square", .05); },
+  over(){ [392, 330, 262, 196].forEach((f, i) => tone(f, .22, "triangle", .12, i * .17)); },
+  start(){ [392, 523, 659].forEach((f, i) => tone(f, .1, "square", .05, i * .08)); }
+};
+function paintMute(){ const m = $("mute"); m.textContent = muted ? "🔇" : "🔊"; m.setAttribute("aria-pressed", muted); m.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound"); }
+$("mute").addEventListener("click", () => {
+  muted = !muted; paintMute();
+  try { localStorage.setItem("hop-muted", muted ? "1" : "0"); } catch(e) {}
+  if (!muted) ac();
+});
+paintMute();
+
+/* Lanes: rows 1-5 river, 6 median, 7-11 road, 12 start, 0 goal */
+const rnd = (a, b) => a + Math.random() * (b - a);
+function makeLane(row, kind){
+  const mult = cfg.speed * (1 + (stage - 1) * .08), dir = row % 2 ? 1 : -1;
+  let w, gap, speed, type;
+  if (kind === "road"){ w = Math.random() < .35 ? 80 : 40; gap = rnd(110, 200) * (cfg.speed < 1 ? 1.2 : 1); speed = rnd(55, 120) * mult; type = "car"; }
+  else { type = Math.random() < .35 ? "turtle" : "log"; w = type === "turtle" ? 120 : rnd(110, 170); gap = rnd(70, 110); speed = rnd(35, 80) * mult; }
+  const s = w + gap, n = Math.ceil((W + 260) / s), items = [], col = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+  for (let i = 0; i < n; i++) items.push({ bx: i * s, w: kind === "road" && Math.random() < .3 ? 80 : w, c: kind === "road" ? CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)] : col });
+  return { row, kind, type, dir, speed, s, n, L: n * s, off: Math.random() * s, items, phase: Math.random() * 6 };
+}
+function buildLanes(){
+  lanes = []; for (let r = 1; r <= 5; r++) lanes.push(makeLane(r, "river")); for (let r = 7; r <= 11; r++) lanes.push(makeLane(r, "road"));
+}
+const itemX = (ln, it) => (((it.bx + ln.off * ln.dir) % ln.L) + ln.L) % ln.L - 130;
+const diving = ln => cfg.dive && ln.type === "turtle" && ((t + ln.phase) % 6) > 4.1;
+
+/* Game */
+function loadBest(){ try { best = +localStorage.getItem("hop-best-" + level) || 0; } catch(e) { best = 0; } $("best").textContent = best; }
+function hud(){ $("score").textContent = score; $("stagen").textContent = stage; $("lives").textContent = "♥".repeat(Math.max(lives, 0)) + "♡".repeat(Math.max(cfg.lives - Math.max(lives, 0), 0)); }
+function spawn(){ p = { x: W / 2 - 20, row: START, y: START * T, face: 0 }; minRow = START; timeLeft = cfg.time; tickedAt = 0; }
+function startGame(l){
+  level = l; cfg = LEVELS[l]; stage = 1; score = 0; lives = cfg.lives; filled = []; parts = []; loadBest(); buildLanes(); spawn(); hud();
+  state = "play"; $("menu").hidden = true; $("msg").hidden = true; last = performance.now(); ac(); sfx.start(); requestAnimationFrame(loop);
+}
+function showMsg(tt, x, a){ $("mtitle").textContent = tt; $("mtext").textContent = x; $("mainBtn").textContent = a; $("msg").hidden = false; $("mainBtn").focus(); }
+function showMenu(){ state = "menu"; $("msg").hidden = true; $("menu").hidden = false; }
+function saveBest(){ if (score > best){ best = score; $("best").textContent = best; try { localStorage.setItem("hop-best-" + level, best); } catch(e) {} } }
+function burst(x, y, col, n){ for (let i = 0; i < n; i++){ const a = Math.random() * 6.28, s = 50 + Math.random() * 130; parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .6, col }); } }
+function die(why){
+  if (state !== "play") return; state = "dying"; dyingT = 1; lives--; hud(); deathMsg = why;
+  why === "splash" ? sfx.splash() : sfx.crash(); burst(p.x + 20, p.y + 20, why === "splash" ? "#6ee0ff" : "#ffc93c", 16);
+}
+function hop(dx, dy){
+  if (state !== "play") return; ac();
+  const nr = p.row + dy; if (nr < 0 || nr > START) return;
+  p.row = nr; p.x += dx * T; p.face = dx || p.face; sfx.hop();
+  if (nr < minRow){ minRow = nr; score += 10; hud(); }
+  if (nr === 0) reachGoal();
+}
+function reachGoal(){
+  const c = p.x + 20, i = SLOTS.findIndex(s => Math.abs(s - c) < 26);
+  if (i < 0 || filled.includes(i)) return die("crash");
+  filled.push(i); score += 50 + Math.round(timeLeft) * 2; hud(); sfx.nest();
+  if (filled.length === SLOTS.length){
+    state = "cleared"; score += 200; hud(); saveBest(); sfx.clear();
+    setTimeout(() => { if (state === "cleared") showMsg("Stage " + stage + " cleared!", "All nests filled. Score " + score + ". Faster traffic next.", "Next stage"); }, 900);
+  } else spawn();
+}
+function nextStage(){ stage++; filled = []; lives = Math.min(lives + 1, cfg.lives + 1); buildLanes(); spawn(); hud(); state = "play"; $("msg").hidden = true; last = performance.now(); requestAnimationFrame(loop); }
+function update(dt){
+  t += dt;
+  for (const ln of lanes) ln.off += ln.speed * dt;
+  const ln = lanes.find(l => l.row === p.row);
+  if (state === "play"){
+    timeLeft -= dt;
+    if (timeLeft < 6 && Math.ceil(timeLeft) !== tickedAt){ tickedAt = Math.ceil(timeLeft); sfx.tick(); }
+    if (timeLeft <= 0) { die("crash"); }
+    else if (ln && ln.kind === "road"){
+      for (const it of ln.items){ const x = itemX(ln, it); if (p.x + 32 > x && p.x + 8 < x + it.w){ die("crash"); break; } }
+    } else if (ln && ln.kind === "river"){
+      const c = p.x + 20; let on = false;
+      if (!diving(ln)) for (const it of ln.items){ const x = itemX(ln, it); if (c > x + 3 && c < x + it.w - 3){ on = true; break; } }
+      if (on) p.x += ln.dir * ln.speed * dt; else die("splash");
+    }
+    if (state === "play" && (p.x < -16 || p.x > W - 24)) die(ln && ln.kind === "river" ? "splash" : "crash");
+  }
+  p.y += (p.row * T - p.y) * Math.min(1, dt * 24);
+  for (let i = parts.length - 1; i >= 0; i--){ const q = parts[i]; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; if (q.life <= 0) parts.splice(i, 1); }
+  if (state === "dying"){
+    dyingT -= dt;
+    if (dyingT <= 0){
+      if (lives <= 0){ state = "over"; saveBest(); sfx.over(); draw(); setTimeout(() => { if (state === "over") showMsg("Game over", "Score " + score + " on stage " + stage + ". Best: " + best + ".", "Play again"); }, 500); }
+      else { spawn(); state = "play"; }
+    }
+  }
+}
+function loop(now){
+  if (state === "menu" || state === "paused" || state === "over") return;
+  const dt = Math.min((now - last) / 1000, .05); last = now; update(dt); draw();
+  if (state !== "cleared" && state !== "over") requestAnimationFrame(loop);
+  else if (state === "cleared") draw();
+}
+function rr(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); }
+function draw(){
+  ctx.fillStyle = "#1d1f40"; ctx.fillRect(0, 0, W, H);
+  // goal
+  ctx.fillStyle = "#1f4a50"; ctx.fillRect(0, 0, W, T);
+  SLOTS.forEach((s, i) => { ctx.fillStyle = "#2a3b7a"; rr(s - 24, 4, 48, 32, 10); if (filled.includes(i)) chick(s - 14, 6, 0, 1); });
+  // river
+  ctx.fillStyle = "#2a3b7a"; ctx.fillRect(0, T, W, 5 * T);
+  ctx.fillStyle = "rgba(255,255,255,.06)"; for (let r = 1; r <= 5; r++) for (let x = (r * 37 + t * 10 * (r % 2 ? 1 : -1)) % 60; x < W; x += 60) ctx.fillRect(x, r * T + 18, 22, 3);
+  // median + start
+  ctx.fillStyle = "#3d4388"; ctx.fillRect(0, 6 * T, W, T); ctx.fillRect(0, 12 * T, W, T);
+  // road
+  ctx.fillStyle = "#262a58"; ctx.fillRect(0, 7 * T, W, 5 * T);
+  ctx.fillStyle = "rgba(255,255,255,.18)"; for (let r = 8; r <= 11; r++) for (let x = 6; x < W; x += 40) ctx.fillRect(x, r * T - 2, 20, 4);
+  for (const ln of lanes){
+    const y = ln.row * T, dv = diving(ln);
+    for (const it of ln.items){
+      const x = itemX(ln, it); if (x > W || x + it.w < 0) continue;
+      if (ln.kind === "road"){
+        ctx.fillStyle = it.c; rr(x, y + 6, it.w, T - 12, 8); ctx.fillStyle = "rgba(16,17,42,.55)";
+        const fx = ln.dir > 0 ? x + it.w - 14 : x + 4; ctx.fillRect(fx, y + 10, 10, T - 20);
+        ctx.fillStyle = "#fff"; ctx.fillRect(ln.dir > 0 ? x + it.w - 3 : x, y + 9, 3, 5); ctx.fillRect(ln.dir > 0 ? x + it.w - 3 : x, y + T - 14, 3, 5);
+      } else if (ln.type === "log"){
+        ctx.fillStyle = "#c46a3c"; rr(x, y + 6, it.w, T - 12, 10); ctx.fillStyle = "#8a4526"; for (let k = 18; k < it.w - 10; k += 28) ctx.fillRect(x + k, y + 12, 3, T - 24);
+      } else {
+        ctx.globalAlpha = dv ? .3 : 1;
+        for (let k = 0; k < 3; k++){ const cx = x + 20 + k * 40; ctx.fillStyle = "#25b896"; ctx.beginPath(); ctx.arc(cx, y + 20, 16, 0, 7); ctx.fill(); ctx.fillStyle = "#1c8a72"; ctx.beginPath(); ctx.arc(cx, y + 20, 9, 0, 7); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+  if (state !== "over" && !(state === "dying" && Math.floor(dyingT * 12) % 2)) chick(p.x, p.y, p.face, 1);
+  for (const q of parts){ ctx.globalAlpha = Math.max(q.life * 1.6, 0); ctx.fillStyle = q.col; ctx.fillRect(q.x - 3, q.y - 3, 6, 6); }
+  ctx.globalAlpha = 1;
+  // timer bar
+  ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(0, H - 6, W, 6); ctx.fillStyle = timeLeft < 8 ? "#ff6b6b" : "#ffc93c"; ctx.fillRect(0, H - 6, W * Math.max(timeLeft, 0) / cfg.time, 6);
+}
+function chick(x, y, face, s){
+  ctx.fillStyle = "#ffc93c"; ctx.beginPath(); ctx.arc(x + 20, y + 22, 14, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ffb02e"; ctx.beginPath(); ctx.arc(x + 20, y + 10, 10, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ff9a5c"; ctx.beginPath(); ctx.moveTo(x + 14, y + 12); ctx.lineTo(x + 26, y + 12); ctx.lineTo(x + 20, y + 19); ctx.fill();
+  ctx.fillStyle = "#10112a"; ctx.fillRect(x + 14, y + 6, 3, 4); ctx.fillRect(x + 23, y + 6, 3, 4);
+  ctx.fillStyle = "#ff9a5c"; ctx.fillRect(x + 12, y + 34, 4, 4); ctx.fillRect(x + 24, y + 34, 4, 4);
+}
+
+/* Input */
+const K = { ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] };
+addEventListener("keydown", e => { const k = K[e.key]; if (k && state === "play"){ e.preventDefault(); hop(k[0], k[1]); } });
+let sx = 0, sy = 0, sw = false;
+$("stage").addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; sw = true; });
+addEventListener("pointerup", e => {
+  if (!sw) return; sw = false; if (state !== "play") return;
+  const dx = e.clientX - sx, dy = e.clientY - sy;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 18){ hop(0, -1); return; }
+  Math.abs(dx) > Math.abs(dy) ? hop(dx > 0 ? 1 : -1, 0) : hop(0, dy > 0 ? 1 : -1);
+});
+document.querySelectorAll(".pad button").forEach(b => b.addEventListener("pointerdown", e => { e.preventDefault(); const [x, y] = b.dataset.d.split(",").map(Number); hop(x, y); }));
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => startGame(b.dataset.l)));
+$("mainBtn").addEventListener("click", () => {
+  if (state === "paused"){ state = resumeTo; $("msg").hidden = true; last = performance.now(); requestAnimationFrame(loop); }
+  else if (state === "cleared") nextStage();
+  else startGame(level);
+});
+$("altBtn").addEventListener("click", showMenu);
+document.addEventListener("visibilitychange", () => { if (document.hidden && (state === "play" || state === "dying")){ resumeTo = state; state = "paused"; showMsg("Paused", "Your game is waiting.", "Resume"); } });
+cfg = LEVELS.medium; stage = 1; score = 0; lives = 3; filled = []; parts = []; loadBest(); buildLanes(); spawn(); hud(); draw();
+</script>
+</body>
+</html>
