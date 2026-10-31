@@ -135,5 +135,5 @@ Web Serial API is required.
 
 ## Credits
 
-- Built by **Kamil Hassan**.
-- Flashing powere
+- - Built by **Kamil Hassan**.
+- - Flashing powered by [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
