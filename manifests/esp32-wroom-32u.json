@@ -1,0 +1,12 @@
+{
+  "name": "Free Games ESP32",
+  "version": "1.0.0",
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "../firmware/esp32-wroom-32u/factory.bin", "offset": 0 }
+      ]
+    }
+  ]
+}
