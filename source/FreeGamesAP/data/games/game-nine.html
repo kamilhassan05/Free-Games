@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whack-a-Mole · Free Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;
+  --yellow:#ffc93c;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:1rem;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+header,.stats,.status,.stage,.controls{width:min(100%,440px,calc(100dvh - 300px));min-width:min(100%,300px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;box-shadow:inset 0 0 0 2px var(--line);background:var(--surface)}
+h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.stats{display:flex;justify-content:space-between;gap:.5rem;font-weight:700}
+.stats span{background:var(--surface);padding:.35rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.status{text-align:center;font:800 1.25rem var(--display);letter-spacing:-.01em;min-height:1.6em}
+.stage{position:relative;background:#1d1f40;padding:12px;border-radius:24px;box-shadow:0 0 0 3px var(--line);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.grid{container-type:inline-size;--cols:3;--rows:3;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));grid-template-rows:repeat(var(--rows),minmax(0,1fr));gap:10px;aspect-ratio:var(--cols)/var(--rows)}
+.hole{position:relative;overflow:hidden;min-width:0;min-height:0;border:0;padding:0;border-radius:18px;background:#262a58;cursor:pointer;touch-action:manipulation;transition:background .1s}
+.hole::after{content:"";position:absolute;left:6%;right:6%;bottom:4%;height:26%;border-radius:50%;background:#14152e;z-index:2;pointer-events:none}
+.critter{position:absolute;left:0;right:0;bottom:18%;z-index:1;text-align:center;line-height:1;font-size:calc(100cqw / var(--cols) * .5);transform:translateY(130%);transition:transform .09s;pointer-events:none}
+.hole.up .critter{transform:translateY(0)}
+.hole.gold{background:#4a4326}
+.hole.boom{background:#5a2a3c}
+@media (prefers-reduced-motion:reduce){.critter,.hole{transition:none}}
+.overlay{position:absolute;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:.7rem;text-align:center;padding:1.5rem;border-radius:24px;background:rgba(20,21,46,.9);color:#eef0ff;z-index:5}
+.overlay[hidden]{display:none}
+.overlay h2{font:800 2.2rem var(--display);margin:0;letter-spacing:-.02em}
+.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.85rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer}
+.btn.ghost{background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85}
+.picks{display:flex;flex-direction:column;gap:.6rem;width:min(100%,260px);margin-top:.4rem}
+.picks .btn{width:100%}.picks small{display:block;font-weight:500;opacity:.75}
+.controls{display:flex;gap:.5rem}
+.soft{flex:1;border:0;cursor:pointer;padding:.65rem;border-radius:999px;background:var(--surface);color:var(--ink);font:500 .95rem var(--body);box-shadow:inset 0 0 0 2px var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1>Whack-a-Mole</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="off">
+  <span>Score <b id="score">0</b></span>
+  <span>Best <b id="best">0</b></span>
+  <span>Time <b id="time">30</b></span>
+</div>
+<div class="status" id="status">&nbsp;</div>
+<div class="stage" id="stage">
+  <div class="grid" id="grid"></div>
+  <div class="overlay" id="menu">
+    <h2>Whack-a-Mole</h2>
+    <p>Tap the moles before they hide. ⭐ is worth 5. Avoid the 💣.</p>
+    <div class="picks">
+      <button class="btn pick" data-l="easy">Easy<small>3 × 3, slow moles, no bombs</small></button>
+      <button class="btn pick" data-l="medium">Medium<small>3 × 3, a few bombs</small></button>
+      <button class="btn pick" data-l="hard">Hard<small>4 × 3, fast moles, more bombs</small></button>
+    </div>
+  </div>
+  <div class="overlay" id="msg" hidden>
+    <h2 id="mtitle"></h2>
+    <p id="mtext"></p>
+    <button class="btn" id="mainBtn"></button>
+    <button class="btn ghost" id="altBtn">Change level</button>
+  </div>
+</div>
+<div class="controls">
+  <button class="soft" id="restart">Restart</button>
+  <button class="soft" id="change">Change level</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const LEVELS = {
+  easy:   { cols: 3, rows: 3, time: 30, spawn: .85, show: 1150, bomb: 0 },
+  medium: { cols: 3, rows: 3, time: 30, spawn: .65, show: 900,  bomb: .08 },
+  hard:   { cols: 4, rows: 3, time: 30, spawn: .48, show: 700,  bomb: .15 }
+};
+const FACE = { mole: "🐹", gold: "⭐", bomb: "💣" };
+let level = "medium", cfg = LEVELS.medium, state = "menu", holes = [];
+let score, streak, time, spawnT, last, best = 0, pausedAt = 0, resumeAt = 0, warned = 0;
+
+/* Audio (synthesized, no files needed) */
+let actx = null, muted = false;
+try { muted = localStorage.getItem("mole-muted") === "1"; } catch(e) {}
+function ac(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(f, d, type = "sine", v = .1, when = 0, to){
+  if (muted) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + when;
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+  g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + .02);
+}
+const sfx = {
+  pop(){ tone(300, .06, "sine", .04, 0, 480); },
+  whack(s){ tone(180, .09, "square", .08, 0, 90); tone(420 + Math.min(s, 20) * 25, .1, "triangle", .1, .02); },
+  gold(){ [784, 988, 1319].forEach((f, i) => tone(f, .12, "square", .06, i * .07)); },
+  boom(){ tone(140, .45, "sawtooth", .16, 0, 40); },
+  miss(){ tone(200, .08, "triangle", .05, 0, 150); },
+  tick(){ tone(880, .06, "square", .05); },
+  end(){ [523, 440, 349, 262].forEach((f, i) => tone(f, .2, "triangle", .1, i * .15)); },
+  start(){ [392, 523, 659].forEach((f, i) => tone(f, .1, "square", .05, i * .08)); }
+};
+function paintMute(){ const b = $("mute"); b.textContent = muted ? "🔇" : "🔊"; b.setAttribute("aria-pressed", muted); b.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound"); }
+$("mute").addEventListener("click", () => {
+  muted = !muted; paintMute();
+  try { localStorage.setItem("mole-muted", muted ? "1" : "0"); } catch(e) {}
+  if (!muted) ac();
+});
+paintMute();
+
+/* Game */
+function loadBest(){ try { best = +localStorage.getItem("mole-best-" + level) || 0; } catch(e) { best = 0; } $("best").textContent = best; }
+function hud(){ $("score").textContent = score; $("time").textContent = Math.max(0, Math.ceil(time)); }
+function status(t){ $("status").textContent = t; }
+function buildGrid(){
+  const g = $("grid"); g.innerHTML = ""; holes = [];
+  g.style.setProperty("--cols", cfg.cols); g.style.setProperty("--rows", cfg.rows);
+  for (let i = 0; i < cfg.cols * cfg.rows; i++){
+    const b = document.createElement("button"); b.className = "hole"; b.setAttribute("aria-label", "Hole " + (i + 1));
+    const c = document.createElement("span"); c.className = "critter"; c.setAttribute("aria-hidden", "true"); b.appendChild(c);
+    b.addEventListener("pointerdown", e => { e.preventDefault(); tap(i); });
+    b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); tap(i); } });
+    g.appendChild(b); holes.push({ el: b, c, active: false, busy: false, type: null, until: 0 });
+  }
+}
+function down(h){ h.active = false; h.el.classList.remove("up", "gold", "boom"); }
+function startGame(l){
+  level = l; cfg = LEVELS[l]; buildGrid(); loadBest();
+  score = 0; streak = 0; time = cfg.time; spawnT = .6; warned = 0;
+  hud(); status("Tap the moles!"); $("menu").hidden = true; $("msg").hidden = true;
+  state = "playing"; last = performance.now(); ac(); sfx.start(); requestAnimationFrame(loop);
+}
+function spawn(now, ramp){
+  const free = holes.filter(h => !h.active && !h.busy); if (!free.length) return;
+  const h = free[Math.floor(Math.random() * free.length)], r = Math.random();
+  h.type = r < cfg.bomb ? "bomb" : r < cfg.bomb + .06 ? "gold" : "mole";
+  h.c.textContent = FACE[h.type]; h.active = true; h.until = now + cfg.show * ramp;
+  h.el.classList.add("up"); if (h.type === "gold") h.el.classList.add("gold"); sfx.pop();
+}
+function loop(now){
+  if (state !== "playing") return;
+  const dt = Math.min((now - last) / 1000, .05); last = now;
+  time -= dt;
+  const ramp = 1 - (1 - time / cfg.time) * .35;
+  spawnT -= dt;
+  if (spawnT <= 0){ spawn(now, ramp); spawnT = cfg.spawn * ramp * (.7 + Math.random() * .6); }
+  for (const h of holes){
+    if (h.active && now > h.until){ down(h); if (h.type !== "bomb"){ streak = 0; status("Tap the moles!"); } }
+  }
+  const sec = Math.ceil(time);
+  if (sec <= 5 && sec > 0 && sec !== warned){ warned = sec; sfx.tick(); }
+  hud();
+  if (time <= 0){ endGame(); return; }
+  requestAnimationFrame(loop);
+}
+function tap(i){
+  if (state !== "playing") return; ac();
+  const h = holes[i];
+  if (!h.active){ streak = 0; sfx.miss(); status("Tap the moles!"); return; }
+  const el = h.el, type = h.type; down(h); h.busy = true;
+  if (type === "bomb"){
+    score = Math.max(0, score - 3); time = Math.max(0, time - 2); streak = 0; sfx.boom();
+    h.c.textContent = "💥"; el.classList.add("up", "boom"); status("Boom! −3 points, −2 seconds");
+  } else {
+    const pts = type === "gold" ? 5 : 1 + Math.floor(streak / 5);
+    streak++; score += pts; type === "gold" ? sfx.gold() : sfx.whack(streak);
+    h.c.textContent = "💥"; el.classList.add("up");
+    status(streak >= 3 ? "Streak " + streak + " 🔥" : "+" + pts);
+  }
+  hud();
+  setTimeout(() => { h.busy = false; el.classList.remove("up", "boom"); }, 220);
+}
+function endGame(){
+  state = "over"; holes.forEach(down); hud(); sfx.end();
+  const isBest = score > best;
+  if (isBest){ best = score; $("best").textContent = best; try { localStorage.setItem("mole-best-" + level, best); } catch(e) {} }
+  status("Time’s up!");
+  setTimeout(() => {
+    if (state !== "over") return;
+    $("mtitle").textContent = "Time’s up!";
+    $("mtext").textContent = "You scored " + score + "." + (isBest && score > 0 ? " New best!" : " Best: " + best + ".");
+    $("mainBtn").textContent = "Play again"; $("msg").hidden = false; $("mainBtn").focus();
+  }, 500);
+}
+function showMenu(){ state = "menu"; $("msg").hidden = true; $("menu").hidden = false; status("\u00a0"); holes.forEach(down); }
+
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => startGame(b.dataset.l)));
+$("mainBtn").addEventListener("click", () => {
+  if (state === "paused"){
+    const d = performance.now() - pausedAt; holes.forEach(h => { if (h.active) h.until += d; });
+    state = "playing"; $("msg").hidden = true; last = performance.now(); requestAnimationFrame(loop);
+  } else startGame(level);
+});
+$("altBtn").addEventListener("click", showMenu);
+$("restart").addEventListener("click", () => { if (state !== "menu") startGame(level); });
+$("change").addEventListener("click", showMenu);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && state === "playing"){
+    state = "paused"; pausedAt = performance.now();
+    $("mtitle").textContent = "Paused"; $("mtext").textContent = "Your game is waiting.";
+    $("mainBtn").textContent = "Resume"; $("msg").hidden = false;
+  }
+});
+cfg = LEVELS.medium; buildGrid(); loadBest(); status("\u00a0");
+</script>
+</body>
+</html>
