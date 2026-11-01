@@ -58,7 +58,7 @@ text
 | ESP32-C3 Mini | ESP32-C3 | TBD | ⏳ Not yet |
 | ESP32-S3 | ESP32-S3 | TBD | ⏳ Not yet |
 | ESP32-S3 Mini | ESP32-S3 | TBD | ⏳ Not yet |
-| ESP32 DevKit V1 | ESP32 | 4 MB | ⏳ Same chip, untested |
+| ESP32 DevKit V1 | ESP32 | 4 MB | ✅ Tested |
 
 ---
 
