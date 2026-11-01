@@ -128,7 +128,7 @@
     <div class="hero">
       <div class="chip-tag">Tested: ESP32-WROOM-32U (4 MB)</div>
       <h1>Flash <span>Free Games</span><br>from Your Browser</h1>
-      <p class="hero-sub">No software to install. Connect your board via USB, pick your board, click the button, and you're done in under a minute.</p>
+      <p class="hero-sub">Turn an ESP32 into a pocket arcade. Flash it from your browser, then play 21 games over its own Wi-Fi, with no internet needed.</p>
     </div>
 
     <div class="flash-card">
@@ -139,6 +139,7 @@
         <label for="board">Select board</label>
         <select id="board">
           <option value="esp32-wroom-32u" selected>ESP32-WROOM-32U (tested)</option>
+          <option value="esp32-devkit-v1">ESP32 DevKit V1 (same chip, not tested yet)</option>
           <option value="esp32-c3-mini" disabled>ESP32-C3 Mini (coming soon)</option>
           <option value="esp32-s3" disabled>ESP32-S3 (coming soon)</option>
           <option value="esp32-s3-mini" disabled>ESP32-S3 Mini (coming soon)</option>
@@ -157,7 +158,7 @@
         Requires Chrome or Edge on desktop.
         <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API#browser_compatibility" target="_blank" rel="noopener">Learn why →</a>
       </p>
-      <p class="soon">Only the WROOM-32U is tested right now. More boards will be enabled after real-hardware testing.</p>
+      <p class="soon">The WROOM-32U is tested. The DevKit V1 uses the same chip and firmware but hasn't been tried yet. Other boards will be enabled after real-hardware testing.</p>
     </div>
 
     <section>
@@ -196,7 +197,7 @@
             <div class="step-num">5</div>
             <div class="step-body">
               <strong>Press Reset</strong>
-              <span>After flashing completes, press <code>RESET</code>. Connect to the board's Wi-Fi and open <code>http://192.168.4.1</code>.</span>
+              <span>After flashing completes, press <code>RESET</code>. Connect to the Wi-Fi named <code>Free Games</code> (no password) and open <code>http://192.168.4.1</code>.</span>
             </div>
           </li>
         </ul>
@@ -268,7 +269,7 @@
           </li>
           <li>
             <strong>Board boots but no Wi-Fi page</strong>
-            <span>Connect to the board's Wi-Fi AP and open <code>http://192.168.4.1</code>. If nothing loads, re-flash and press RESET once.</span>
+            <span>Connect to the board's Wi-Fi (<code>Free Games</code>) and open <code>http://192.168.4.1</code>. If nothing loads, re-flash and press RESET once.</span>
           </li>
         </ul>
       </div>
@@ -284,7 +285,6 @@
 </footer>
 
 <script>
-  // Board dropdown -> set installer manifest. Only enabled options are selectable.
   const boardSelect = document.getElementById('board');
   const installer = document.getElementById('installer');
   boardSelect.addEventListener('change', () => {
