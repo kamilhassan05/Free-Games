@@ -74,16 +74,24 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .cta{display:flex;flex-wrap:wrap;gap:.8rem}
 .facts{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;margin:2rem 0 0;padding:0;list-style:none;color:var(--muted);font-size:.95rem}
 .facts li::before{content:"✓";color:var(--mint);font-weight:700;margin-right:.45rem}
-.board{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:12px;aspect-ratio:1;max-width:460px;width:100%;justify-self:center}
-.board div{border-radius:22px}
-.board .a{background:var(--blue);grid-column:span 2;grid-row:span 2;border-radius:32px;display:grid;place-items:center;font-size:clamp(3rem,9vw,5rem)}
-.board .b{background:var(--yellow);border-radius:50%}
-.board .c{background:var(--coral)}
-.board .d{background:var(--mint);border-radius:50% 50% 50% 8px}
-.board .e{background:var(--surface);box-shadow:inset 0 0 0 2px var(--line)}
-.board .f{background:var(--yellow);grid-column:span 2;display:flex;align-items:center;justify-content:center;gap:.6rem;font:800 1.1rem var(--display);color:#1a1b3a}
-.board .g{background:var(--coral);border-radius:50%}
-@media (max-width:860px){.hero .wrap{grid-template-columns:1fr}.board{max-width:340px;justify-self:start}}
+.hero{overflow-x:clip}
+/* Hero art */
+.art{position:relative;width:100%;max-width:460px;aspect-ratio:1;justify-self:center}
+.art-card{position:absolute;inset:7% 9% 11% 9%;border-radius:36px;background:linear-gradient(150deg,#4f5bff 0%,#7c5cff 55%,#b05cff 100%);box-shadow:0 30px 60px -22px rgba(59,75,255,.6),inset 0 0 0 2px rgba(255,255,255,.2);display:grid;place-items:center;overflow:hidden}
+.art-card::before,.art-card::after{content:"";position:absolute;border-radius:50%}
+.art-card::before{width:62%;aspect-ratio:1;top:-20%;right:-16%;background:rgba(255,255,255,.14)}
+.art-card::after{width:46%;aspect-ratio:1;bottom:-18%;left:-14%;background:rgba(255,201,60,.24)}
+.gp{position:relative;z-index:1;width:80%;margin-bottom:12%;filter:drop-shadow(0 16px 20px rgba(16,17,42,.38))}
+.start{position:absolute;z-index:1;left:50%;bottom:8%;transform:translateX(-50%);background:rgba(255,255,255,.2);color:#fff;font:800 clamp(.72rem,2.4vw,1rem) var(--display);letter-spacing:.14em;padding:.5rem 1.3rem;border-radius:999px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);white-space:nowrap;animation:blink 1.8s ease-in-out infinite}
+.fchip{position:absolute;z-index:2;display:flex;align-items:center;gap:.5rem;padding:.55rem .95rem;background:var(--surface);color:var(--ink);border-radius:16px;font:700 clamp(.78rem,2.2vw,.95rem) var(--body);box-shadow:0 14px 30px -12px rgba(16,17,42,.4),inset 0 0 0 2px var(--line);white-space:nowrap;animation:float 5s ease-in-out infinite}
+.fchip i{font-style:normal;font-size:1.2em}
+.fchip.c1{top:1%;left:1%}
+.fchip.c2{top:64%;right:-1%;animation-delay:-1.7s}
+.fchip.c3{bottom:1%;left:7%;animation-delay:-3.3s}
+@keyframes float{50%{transform:translateY(-9px)}}
+@keyframes blink{50%{opacity:.55}}
+@media (max-width:860px){.hero .wrap{grid-template-columns:1fr}.art{max-width:380px;justify-self:center;margin-top:.5rem}.cta{flex-direction:column}.cta .btn{width:100%}}
+@media (prefers-reduced-motion:reduce){.fchip,.start{animation:none}}
 
 /* Sections */
 section{padding:clamp(2rem,5vw,3.5rem) 0}
@@ -118,6 +126,18 @@ footer p{color:var(--muted);margin:.5rem 0 0;max-width:34ch}
 footer ul{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;list-style:none;margin:0;padding:0;color:var(--muted)}
 footer a:hover{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* Contact / copy rows */
+.contact{display:flex;flex-direction:column;gap:.75rem;margin-top:1.5rem;max-width:560px}
+.contact-row{display:flex;align-items:center;gap:.6rem;background:var(--surface);border-radius:14px;padding:.55rem .75rem .55rem 1rem;box-shadow:inset 0 0 0 2px var(--line);flex-wrap:wrap}
+.contact-row .ico{font-size:1.25rem;flex:none}
+.contact-row .label{font:700 .9rem var(--body);color:var(--muted);flex:none;min-width:78px}
+.contact-row .val{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.contact-row .val a{color:var(--blue);font-weight:700}
+.contact-row .val a:hover{text-decoration:underline}
+.copy-btn{display:inline-flex;align-items:center;gap:.35rem;border:0;cursor:pointer;background:var(--bg);color:var(--ink);font:700 .8rem var(--body);padding:.45rem .75rem;border-radius:10px;box-shadow:inset 0 0 0 2px var(--line);transition:background .2s,color .2s;white-space:nowrap}
+.copy-btn:hover{background:var(--blue);color:var(--on-blue);box-shadow:none}
+.copy-btn.copied{background:var(--mint);color:#fff;box-shadow:none}
 </style>
 </head>
 <body>
@@ -153,10 +173,24 @@ footer a:hover{color:var(--ink)}
         </div>
         <ul class="facts"><li>Always free</li><li>No downloads</li><li>No sign-up</li><li id="count"></li></ul>
       </div>
-      <div class="board" aria-hidden="true">
-        <div class="a">🎮</div><div class="b"></div><div class="c"></div>
-        <div class="d"></div><div class="e"></div>
-        <div class="f">Press start</div><div class="g"></div>
+      <div class="art" aria-hidden="true">
+        <div class="art-card">
+          <svg class="gp" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+            <rect x="50" y="26" width="48" height="14" rx="7" fill="#e7e9ff"/>
+            <rect x="142" y="26" width="48" height="14" rx="7" fill="#e7e9ff"/>
+            <rect x="30" y="76" width="50" height="72" rx="25" transform="rotate(14 55 112)" fill="#ffffff"/>
+            <rect x="160" y="76" width="50" height="72" rx="25" transform="rotate(-14 185 112)" fill="#ffffff"/>
+            <rect x="38" y="38" width="164" height="86" rx="42" fill="#ffffff"/>
+            <g fill="#1a1b3a"><rect x="62" y="74" width="34" height="12" rx="4"/><rect x="73" y="63" width="12" height="34" rx="4"/></g>
+            <circle cx="161" cy="66" r="7.5" fill="#ffc93c"/><circle cx="177" cy="81" r="7.5" fill="#ff6b6b"/>
+            <circle cx="161" cy="96" r="7.5" fill="#25b896"/><circle cx="145" cy="81" r="7.5" fill="#6f7bff"/>
+            <ellipse cx="112" cy="70" rx="7" ry="4" fill="#c9cdf0"/><ellipse cx="128" cy="70" rx="7" ry="4" fill="#c9cdf0"/>
+          </svg>
+          <div class="start">PRESS START</div>
+        </div>
+        <div class="fchip c1"><i>🎯</i><span><span id="count2">21</span> games</span></div>
+        <div class="fchip c2"><i>⚡</i>Instant play</div>
+        <div class="fchip c3"><i>📶</i>Works offline</div>
       </div>
     </div>
   </div>
@@ -183,24 +217,37 @@ footer a:hover{color:var(--ink)}
     <div class="wrap">
       <div class="head"><h2>About Free Games</h2></div>
       <p style="max-width:62ch;color:var(--muted);margin:0">Free Games is a collection of small, fast games that run in your browser. Every game is free to play, and new ones are added regularly.</p>
+
+      <!-- Contact / social links with copy buttons -->
+      <div class="contact" aria-label="Contact and social links">
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">👤</span>
+          <span class="label">Name</span>
+          <span class="val"><strong>Kamil Hassan</strong></span>
+          <button class="copy-btn" data-copy="Kamil Hassan" aria-label="Copy name">📋 Copy</button>
+        </div>
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">📸</span>
+          <span class="label">Instagram</span>
+          <span class="val"><a href="https://www.instagram.com/kamil.hassan512" target="_blank" rel="noopener">kamil.hassan512</a></span>
+          <button class="copy-btn" data-copy="https://www.instagram.com/kamil.hassan512" aria-label="Copy Instagram profile link">📋 Copy</button>
+        </div>
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">📧</span>
+          <span class="label">Email</span>
+          <span class="val"><a href="mailto:kamilhassan085@gmail.com">kamilhassan085@gmail.com</a></span>
+          <button class="copy-btn" data-copy="kamilhassan085@gmail.com" aria-label="Copy email address">📋 Copy</button>
+        </div>
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">🐙</span>
+          <span class="label">GitHub</span>
+          <span class="val"><a href="https://github.com/kamilhassan05" target="_blank" rel="noopener">https://github.com/kamilhassan05</a></span>
+          <button class="copy-btn" data-copy="https://github.com/kamilhassan05" aria-label="Copy GitHub profile link">📋 Copy</button>
+        </div>
+      </div>
     </div>
   </section>
 </main>
-
-<footer>
-  <div class="wrap">
-    <div>
-      <a class="logo" href="#top"><span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Free Games</a>
-      <p>Free browser games for everyone.</p>
-    </div>
-    <ul>
-      <li><a href="#games">All games</a></li>
-      <li><a href="#categories">Categories</a></li>
-      <li><a href="#about">About</a></li>
-    </ul>
-    <p style="margin:0">&copy; <span id="yr">2026</span> Free Games</p>
-  </div>
-</footer>
 
 <script>
 /* Add each new game here. href points to your game's HTML file. */
@@ -251,6 +298,7 @@ cats.addEventListener("click", e => { const b=e.target.closest(".cat"); if(b){ac
 q.addEventListener("input", render);
 render();
 document.getElementById("count").textContent = GAMES.length + " games";
+document.getElementById("count2").textContent = GAMES.length;
 document.getElementById("random").addEventListener("click", () => { location.href = GAMES[Math.floor(Math.random() * GAMES.length)].href; });
 
 const menu = document.getElementById("menu"), links = document.getElementById("links");
@@ -262,7 +310,40 @@ document.getElementById("theme").addEventListener("click", () => {
   const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
   r.dataset.theme = dark ? "light" : "dark";
 });
-document.getElementById("yr").textContent = new Date().getFullYear();
+
+/* Copy-to-clipboard for contact rows */
+document.querySelectorAll(".copy-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const text = btn.dataset.copy;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for older browsers / non-secure contexts
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      const original = btn.textContent;
+      btn.classList.add("copied");
+      btn.textContent = "✓ Copied";
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.textContent = original;
+      }, 1500);
+    } catch (err) {
+      // Last-resort feedback if copying fails
+      btn.textContent = "Copy failed";
+      setTimeout(() => { btn.textContent = "📋 Copy"; }, 1500);
+    }
+  });
+});
 </script>
 </body>
 </html>
