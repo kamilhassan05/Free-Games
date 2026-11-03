@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Merge Up · Free Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;
+  --yellow:#ffc93c;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:1rem;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+header,.stats,.controls,.stage{width:min(100%,440px,calc(100dvh - 250px))}
+header,.stats,.controls{min-width:min(100%,300px)}
+.stage{min-width:min(100%,300px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;box-shadow:inset 0 0 0 2px var(--line);background:var(--surface)}
+h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.stats{display:flex;justify-content:space-between;gap:.5rem;font-weight:700}
+.stats span{background:var(--surface);padding:.35rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{position:relative;background:#1d1f40;padding:10px;border-radius:24px;box-shadow:0 0 0 3px var(--line);touch-action:none;user-select:none;-webkit-user-select:none}
+.board{container-type:inline-size;position:relative;aspect-ratio:1;--n:4}
+.cells{position:absolute;inset:0;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr)}
+.cells div{padding:5px}.cells i{display:block;height:100%;border-radius:12px;background:#262a58}
+.tiles{position:absolute;inset:0}
+.tile{position:absolute;left:0;top:0;width:calc(100% / var(--n));height:calc(100% / var(--n));padding:5px;transform:translate(calc(var(--c) * 100%),calc(var(--r) * 100%));transition:transform .12s ease}
+.t{width:100%;height:100%;display:grid;place-items:center;border-radius:12px;font:800 calc(100cqw / var(--n) * .4) var(--display);background:#2a2d5c;color:#eef0ff;letter-spacing:-.03em}
+.t.big3{font-size:calc(100cqw / var(--n) * .32)}.t.big4{font-size:calc(100cqw / var(--n) * .26)}
+.t.new{animation:appear .2s}.t.merge{animation:pop .2s}
+@keyframes appear{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+.t[data-v="2"]{background:#2f3466}.t[data-v="4"]{background:#3d4388}
+.t[data-v="8"]{background:#6f7bff;color:#10112a}.t[data-v="16"]{background:#95a0ff;color:#10112a}
+.t[data-v="32"]{background:#25b896;color:#10112a}.t[data-v="64"]{background:#4fd3b3;color:#10112a}
+.t[data-v="128"]{background:#ffc93c;color:#1a1b3a}.t[data-v="256"]{background:#ffb02e;color:#1a1b3a}
+.t[data-v="512"]{background:#ff9a5c;color:#1a1b3a}.t[data-v="1024"]{background:#ff6b6b;color:#1a1b3a}
+.t[data-v="2048"]{background:#ff4f7b;color:#fff}.t.max{background:#a78bfa;color:#10112a}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;text-align:center;padding:1.5rem;border-radius:24px;background:rgba(20,21,46,.9);color:#eef0ff}
+.overlay[hidden]{display:none}
+.overlay h2{font:800 2.2rem var(--display);margin:0;letter-spacing:-.02em}
+.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.85rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer}
+.btn.ghost{background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85}
+.picks{display:flex;flex-direction:column;gap:.6rem;width:min(100%,260px);margin-top:.4rem}
+.picks .btn{width:100%}.picks small{display:block;font-weight:500;opacity:.75}
+.controls{display:flex;gap:.5rem}
+.soft{flex:1;border:0;cursor:pointer;padding:.65rem;border-radius:999px;background:var(--surface);color:var(--ink);font:500 .95rem var(--body);box-shadow:inset 0 0 0 2px var(--line)}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}.t.new,.t.merge{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1>Merge Up</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="polite">
+  <span>Score <b id="score">0</b></span>
+  <span>Best <b id="best">0</b></span>
+  <span>Goal <b id="goal">2048</b></span>
+</div>
+<div class="stage" id="stage">
+  <div class="board" id="board"><div class="cells" id="cells"></div><div class="tiles" id="tiles"></div></div>
+  <div class="overlay" id="menu">
+    <h2>Merge Up</h2>
+    <p>Slide the tiles. When two match, they merge into one.</p>
+    <div class="picks">
+      <button class="btn pick" data-l="easy">Easy<small>5 × 5 board, goal 2048</small></button>
+      <button class="btn pick" data-l="medium">Medium<small>4 × 4 board, goal 2048</small></button>
+      <button class="btn pick" data-l="hard">Hard<small>3 × 3 board, goal 512</small></button>
+    </div>
+    <p style="font-size:.9rem">Use the arrow keys or W A S D, or swipe on the board.</p>
+  </div>
+  <div class="overlay" id="msg" hidden>
+    <h2 id="mtitle"></h2>
+    <p id="mtext"></p>
+    <button class="btn" id="mainBtn"></button>
+    <button class="btn ghost" id="altBtn">Change level</button>
+  </div>
+</div>
+<div class="controls">
+  <button class="soft" id="restart">New game</button>
+  <button class="soft" id="change">Change level</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const LEVELS = { easy:{ n:5, target:2048 }, medium:{ n:4, target:2048 }, hard:{ n:3, target:512 } };
+let level = "medium", n = 4, target = 2048, tiles = [], nid = 0, score = 0, best = 0, won = false, locked = false, state = "menu";
+
+/* Audio (synthesized, no files needed) */
+let actx = null, muted = false;
+try { muted = localStorage.getItem("merge-muted") === "1"; } catch(e) {}
+function ac(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(f, d, type = "sine", v = .1, when = 0, to){
+  if (muted) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + when;
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+  g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + .02);
+}
+const sfx = {
+  slide(){ tone(260, .06, "triangle", .05, 0, 200); },
+  merge(v){ const f = 280 + Math.log2(v) * 55; tone(f, .12, "square", .06); tone(f * 1.5, .14, "square", .05, .06); },
+  win(){ [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .2, "square", .06, i * .1)); },
+  over(){ [392, 330, 262, 196].forEach((f, i) => tone(f, .22, "triangle", .12, i * .16)); },
+  start(){ [392, 523, 659].forEach((f, i) => tone(f, .1, "square", .05, i * .08)); }
+};
+function paintMute(){ const b = $("mute"); b.textContent = muted ? "🔇" : "🔊"; b.setAttribute("aria-pressed", muted); b.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound"); }
+$("mute").addEventListener("click", () => {
+  muted = !muted; paintMute();
+  try { localStorage.setItem("merge-muted", muted ? "1" : "0"); } catch(e) {}
+  if (!muted) ac();
+});
+paintMute();
+
+/* Board */
+function loadBest(){ try { best = +localStorage.getItem("merge-best-" + level) || 0; } catch(e) { best = 0; } }
+function saveBest(){ if (score > best){ best = score; try { localStorage.setItem("merge-best-" + level, best); } catch(e) {} } }
+function hud(){ $("score").textContent = score; $("best").textContent = best; $("goal").textContent = target; }
+function paint(t){
+  const el = t.inner; el.dataset.v = t.v; el.textContent = t.v;
+  el.className = "t" + (t.v >= 1000 ? " big4" : t.v >= 100 ? " big3" : "") + (t.v > 2048 ? " max" : "");
+}
+function makeTile(v, r, c){
+  const t = { id: nid++, v, r, c, m: false };
+  t.el = document.createElement("div"); t.el.className = "tile";
+  t.inner = document.createElement("div"); t.el.appendChild(t.inner);
+  place(t); paint(t); t.inner.classList.add("new");
+  $("tiles").appendChild(t.el); tiles.push(t); return t;
+}
+function place(t){ t.el.style.setProperty("--r", t.r); t.el.style.setProperty("--c", t.c); }
+function addTile(){
+  const free = [];
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (!tiles.some(t => t.r === r && t.c === c)) free.push([r, c]);
+  if (!free.length) return;
+  const [r, c] = free[Math.floor(Math.random() * free.length)];
+  makeTile(Math.random() < .9 ? 2 : 4, r, c);
+}
+function newGame(){
+  $("tiles").innerHTML = ""; tiles = []; score = 0; won = false; locked = false;
+  const b = $("board"); b.style.setProperty("--n", n);
+  $("cells").innerHTML = '<div><i></i></div>'.repeat(n * n);
+  loadBest(); addTile(); addTile(); hud();
+}
+function startLevel(l){
+  level = l; n = LEVELS[l].n; target = LEVELS[l].target; newGame();
+  state = "playing"; $("menu").hidden = true; $("msg").hidden = true; ac(); sfx.start();
+}
+function showMsg(title, text, main){
+  $("mtitle").textContent = title; $("mtext").textContent = text; $("mainBtn").textContent = main;
+  $("msg").hidden = false; $("mainBtn").focus();
+}
+function showMenu(){ state = "menu"; $("msg").hidden = true; $("menu").hidden = false; newGame(); }
+
+function canMove(){
+  if (tiles.length < n * n) return true;
+  for (const t of tiles) for (const u of tiles)
+    if (t.v === u.v && Math.abs(t.r - u.r) + Math.abs(t.c - u.c) === 1) return true;
+  return false;
+}
+function move(dir){
+  if (locked || state !== "playing") return;
+  const horiz = dir === "left" || dir === "right", rev = dir === "right" || dir === "down";
+  let moved = false, gained = 0; const removed = [], merged = [];
+  tiles.forEach(t => t.m = false);
+  for (let i = 0; i < n; i++){
+    const line = tiles.filter(t => (horiz ? t.r : t.c) === i).sort((a, b) => horiz ? a.c - b.c : a.r - b.r);
+    if (rev) line.reverse();
+    const out = [];
+    for (const t of line){
+      const last = out[out.length - 1];
+      if (last && last.v === t.v && !last.m){ last.v *= 2; last.m = true; gained += last.v; removed.push({ t, into: last }); merged.push(last); }
+      else out.push(t);
+    }
+    out.forEach((t, k) => {
+      const pos = rev ? n - 1 - k : k, nr = horiz ? i : pos, nc = horiz ? pos : i;
+      if (t.r !== nr || t.c !== nc) moved = true;
+      t.r = nr; t.c = nc; place(t);
+    });
+  }
+  removed.forEach(({ t, into }) => { t.r = into.r; t.c = into.c; place(t); moved = true; });
+  if (!moved) return;
+  locked = true; sfx.slide(); score += gained; saveBest(); hud();
+  setTimeout(() => {
+    removed.forEach(({ t }) => { t.el.remove(); tiles.splice(tiles.indexOf(t), 1); });
+    merged.forEach(t => { paint(t); void t.inner.offsetWidth; t.inner.classList.add("merge"); });
+    if (merged.length) sfx.merge(Math.max(...merged.map(t => t.v)));
+    addTile(); locked = false;
+    if (!won && merged.some(t => t.v >= target)){
+      won = true; state = "won"; setTimeout(sfx.win, 150);
+      showMsg("You made " + target + "!", "Score " + score + ". Keep going for a higher score?", "Keep going");
+    } else if (!canMove()){
+      state = "over"; sfx.over();
+      showMsg("No moves left", "You scored " + score + ". Best: " + best + ".", "Play again");
+    }
+  }, 130);
+}
+
+/* Input */
+const KEYS = { ArrowLeft:"left", a:"left", A:"left", ArrowRight:"right", d:"right", D:"right", ArrowUp:"up", w:"up", W:"up", ArrowDown:"down", s:"down", S:"down" };
+addEventListener("keydown", e => { const d = KEYS[e.key]; if (d && state === "playing"){ e.preventDefault(); move(d); } });
+let sx = 0, sy = 0, tracking = false;
+$("stage").addEventListener("pointerdown", e => { if (state === "playing"){ sx = e.clientX; sy = e.clientY; tracking = true; } });
+addEventListener("pointerup", e => {
+  if (!tracking) return; tracking = false;
+  const dx = e.clientX - sx, dy = e.clientY - sy;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+});
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => startLevel(b.dataset.l)));
+$("mainBtn").addEventListener("click", () => {
+  if (state === "won"){ state = "playing"; $("msg").hidden = true; }
+  else startLevel(level);
+});
+$("altBtn").addEventListener("click", showMenu);
+$("restart").addEventListener("click", () => { if (state !== "menu") startLevel(level); });
+$("change").addEventListener("click", showMenu);
+newGame();
+</script>
+</body>
+</html>

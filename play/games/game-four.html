@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Road Rush · Free Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;
+  --yellow:#ffc93c;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:1rem;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+header,.stats{width:min(100%,440px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;box-shadow:inset 0 0 0 2px var(--line);background:var(--surface)}
+h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.stats{display:flex;justify-content:space-between;gap:.5rem;font-weight:700}
+.stats span{background:var(--surface);padding:.35rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{position:relative;width:min(100%,440px,calc((100dvh - 190px) * 2 / 3));aspect-ratio:2/3;border-radius:24px;overflow:hidden;background:#1d1f40;touch-action:none;box-shadow:0 0 0 3px var(--line)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;text-align:center;padding:1.5rem;background:rgba(20,21,46,.88);color:#eef0ff}
+.overlay[hidden]{display:none}
+.overlay h2{font:800 2.2rem var(--display);margin:0;letter-spacing:-.02em}
+.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.85rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer}
+.btn.ghost{background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85}
+.picks{display:flex;flex-direction:column;gap:.6rem;width:min(100%,260px);margin-top:.4rem}
+.picks .btn{width:100%}
+.picks small{display:block;font-weight:500;opacity:.75}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1>Road Rush</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="polite">
+  <span>Score <b id="score">0</b></span>
+  <span>Best <b id="best">0</b></span>
+  <span><b id="kmh">0</b> km/h</span>
+</div>
+<div class="stage" id="stage">
+  <canvas id="c" width="400" height="600" aria-label="Road Rush game board"></canvas>
+  <div class="overlay" id="menu">
+    <h2>Road Rush</h2>
+    <p>Weave through traffic. One crash ends the race.</p>
+    <div class="picks">
+      <button class="btn pick" data-l="easy">Easy<small>Slower, lighter traffic</small></button>
+      <button class="btn pick" data-l="medium">Medium<small>Balanced</small></button>
+      <button class="btn pick" data-l="hard">Hard<small>Fast, heavy traffic</small></button>
+    </div>
+    <p style="font-size:.9rem">Switch lanes with ← → or A / D, or tap the left / right side of the screen. Squeaking past cars earns bonus points.</p>
+  </div>
+  <div class="overlay" id="msg" hidden>
+    <h2 id="mtitle"></h2>
+    <p id="mtext"></p>
+    <button class="btn" id="mainBtn"></button>
+    <button class="btn ghost" id="altBtn">Change level</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cv = $("c"), ctx = cv.getContext("2d"), W = 400, H = 600;
+const LEVELS = {
+  easy:   { base: 230, gap: 250 },
+  medium: { base: 290, gap: 205 },
+  hard:   { base: 350, gap: 165 }
+};
+const LANES = 4, laneX = i => 80 + i * 80, P = { y: H - 110, w: 40, h: 70 };
+const COLORS = ["#ff6b6b", "#25b896", "#ffc93c", "#a78bfa", "#ff9a5c"];
+let level = "medium", cfg = LEVELS.medium, state = "menu";
+let score, dist, speed, lane, px, cars, parts, popups, t, gapAcc, last, offset, best = 0, crashed;
+
+/* Audio (synthesized, no files needed) */
+let actx = null, muted = false, eng = null;
+try { muted = localStorage.getItem("racer-muted") === "1"; } catch(e) {}
+function ac(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(f, d, type = "sine", v = .1, when = 0, to){
+  if (muted) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + when;
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+  g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + .02);
+}
+const sfx = {
+  swish(){ tone(500, .08, "triangle", .04, 0, 250); },
+  near(){ tone(880, .07, "square", .05); tone(1175, .1, "square", .05, .06); },
+  crash(){ tone(200, .6, "sawtooth", .2, 0, 35); tone(90, .5, "square", .12, 0, 30); },
+  start(){ [330, 440, 554].forEach((f, i) => tone(f, .14, "square", .06, i * .12)); tone(660, .3, "square", .06, .36); },
+  over(){ [392, 330, 262, 196].forEach((f, i) => tone(f, .22, "triangle", .12, .3 + i * .16)); }
+};
+function engineStart(){
+  engineStop(); if (muted) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+  o.type = "sawtooth"; f.type = "lowpass"; f.frequency.value = 420; g.gain.value = .03;
+  o.connect(f); f.connect(g); g.connect(a.destination); o.start(); eng = { o, g };
+}
+function engineStop(){ if (eng){ try { eng.o.stop(); } catch(e) {} eng = null; } }
+function engineUpdate(){ if (eng && actx) eng.o.frequency.setTargetAtTime(55 + speed * .28, actx.currentTime, .1); }
+function paintMute(){ const b = $("mute"); b.textContent = muted ? "🔇" : "🔊"; b.setAttribute("aria-pressed", muted); b.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound"); }
+$("mute").addEventListener("click", () => {
+  muted = !muted; paintMute();
+  try { localStorage.setItem("racer-muted", muted ? "1" : "0"); } catch(e) {}
+  if (muted) engineStop(); else { ac(); if (state === "playing") engineStart(); }
+});
+paintMute();
+
+/* Game */
+function loadBest(){ try { best = +localStorage.getItem("racer-best-" + level) || 0; } catch(e) { best = 0; } $("best").textContent = best; }
+function hud(){ $("score").textContent = Math.floor(score); $("kmh").textContent = Math.round(speed * .4); }
+function reset(){
+  score = 0; dist = 0; speed = cfg.base; lane = 1; px = laneX(1); cars = []; parts = []; popups = [];
+  t = 0; gapAcc = 0; offset = 0; crashed = false; hud(); loadBest();
+}
+function startGame(l){
+  level = l; cfg = LEVELS[l]; reset(); state = "playing";
+  $("menu").hidden = true; $("msg").hidden = true; last = performance.now();
+  ac(); sfx.start(); engineStart(); requestAnimationFrame(loop);
+}
+function showMsg(title, text, main){
+  $("mtitle").textContent = title; $("mtext").textContent = text; $("mainBtn").textContent = main;
+  $("msg").hidden = false; $("mainBtn").focus();
+}
+function showMenu(){ state = "menu"; engineStop(); $("msg").hidden = true; $("menu").hidden = false; reset(); draw(); }
+function burst(x, y, col, n){
+  for (let i = 0; i < n; i++){
+    const a = Math.random() * 6.28, s = 60 + Math.random() * 180;
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .5 + Math.random() * .4, col });
+  }
+}
+function crash(){
+  state = "over"; crashed = true; engineStop(); sfx.crash(); sfx.over();
+  burst(px, P.y, "#ffc93c", 26); burst(px, P.y, "#ff6b6b", 18);
+  const s = Math.floor(score);
+  if (s > best){ best = s; $("best").textContent = best; try { localStorage.setItem("racer-best-" + level, best); } catch(e) {} }
+  let ticks = 0;
+  (function fx(){ // keep animating the crash briefly
+    const now = performance.now(), dt = Math.min((now - (fx.l || now)) / 1000, .05); fx.l = now;
+    for (let i = parts.length - 1; i >= 0; i--){ const p = parts[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) parts.splice(i, 1); }
+    draw(); if (++ticks < 40 && state === "over") requestAnimationFrame(fx);
+  })();
+  setTimeout(() => { if (state === "over") showMsg("Crash!", "You scored " + s + ". Best: " + best + ".", "Race again"); }, 700);
+}
+function spawn(){
+  const l = Math.floor(Math.random() * LANES);
+  cars.push({ x: laneX(l), y: -90, v: cfg.base * (.35 + Math.random() * .2), col: COLORS[Math.floor(Math.random() * COLORS.length)], passed: false });
+}
+function loop(now){
+  if (state !== "playing") return;
+  const dt = Math.min((now - last) / 1000, .05); last = now; t += dt;
+  speed = Math.min(cfg.base + t * 4, cfg.base + 280);
+  dist += speed * dt; score += speed * dt / 12; offset = (offset + speed * dt) % 80;
+  px += (laneX(lane) - px) * Math.min(1, dt * 14);
+
+  gapAcc += speed * dt;
+  if (gapAcc > cfg.gap){ gapAcc = 0; spawn(); }
+
+  for (let i = cars.length - 1; i >= 0; i--){
+    const c = cars[i]; c.y += (speed - c.v) * dt;
+    if (Math.abs(c.x - px) < P.w - 2 && Math.abs(c.y - P.y) < P.h - 4){ crash(); return; }
+    if (!c.passed && c.y > P.y + P.h){
+      c.passed = true;
+      if (Math.abs(c.x - px) < 100){ score += 5; sfx.near(); popups.push({ x: px, y: P.y - 50, life: .8, text: "+5" }); }
+    }
+    if (c.y > H + 100) cars.splice(i, 1);
+  }
+  for (let i = popups.length - 1; i >= 0; i--){ const p = popups[i]; p.y -= 40 * dt; p.life -= dt; if (p.life <= 0) popups.splice(i, 1); }
+  engineUpdate(); hud(); draw(); requestAnimationFrame(loop);
+}
+function rr(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); }
+function car(x, y, col){
+  rr(x - 20, y - 35, 40, 70, 10);
+  ctx.fillStyle = "rgba(20,21,46,.55)"; rr(x - 14, y - 16, 28, 16, 5); rr(x - 14, y + 10, 28, 10, 4);
+}
+function draw(){
+  ctx.fillStyle = "#1d1f40"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#2a2d5c"; ctx.fillRect(40, 0, 320, H);
+  ctx.fillStyle = "#ffc93c"; ctx.fillRect(36, 0, 4, H); ctx.fillRect(360, 0, 4, H);
+  ctx.fillStyle = "rgba(255,255,255,.5)";
+  for (let l = 1; l < LANES; l++) for (let y = -80 + offset; y < H; y += 80) ctx.fillRect(40 + l * 80 - 2, y, 4, 40);
+  for (const c of cars){ ctx.fillStyle = c.col; car(c.x, c.y, c.col); ctx.fillStyle = "#fff"; ctx.fillRect(c.x - 16, c.y + 33, 8, 3); ctx.fillRect(c.x + 8, c.y + 33, 8, 3); }
+  if (!crashed){
+    ctx.fillStyle = "#6f7bff"; car(px, P.y);
+    ctx.fillStyle = "#ffc93c"; ctx.fillRect(px - 16, P.y - 34, 8, 4); ctx.fillRect(px + 8, P.y - 34, 8, 4);
+    ctx.fillStyle = "#eef0ff"; ctx.fillRect(px - 3, P.y - 33, 6, 66);
+  }
+  for (const p of parts){ ctx.globalAlpha = Math.max(p.life * 1.8, 0); ctx.fillStyle = p.col; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); }
+  ctx.globalAlpha = 1;
+  ctx.font = "800 20px 'Bricolage Grotesque', system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#ffc93c";
+  for (const p of popups){ ctx.globalAlpha = Math.min(p.life * 2, 1); ctx.fillText(p.text, p.x, p.y); }
+  ctx.globalAlpha = 1;
+}
+
+/* Input */
+function move(d){
+  if (state !== "playing") return;
+  const n = Math.max(0, Math.min(LANES - 1, lane + d));
+  if (n !== lane){ lane = n; sfx.swish(); }
+}
+addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A"){ if (!e.repeat) move(-1); }
+  else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D"){ if (!e.repeat) move(1); }
+  else return;
+  e.preventDefault();
+});
+$("stage").addEventListener("pointerdown", e => {
+  if (state !== "playing") return;
+  const r = cv.getBoundingClientRect(); move(e.clientX < r.left + r.width / 2 ? -1 : 1);
+});
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => startGame(b.dataset.l)));
+$("mainBtn").addEventListener("click", () => {
+  if (state === "paused"){ state = "playing"; $("msg").hidden = true; last = performance.now(); engineStart(); requestAnimationFrame(loop); }
+  else startGame(level);
+});
+$("altBtn").addEventListener("click", showMenu);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && state === "playing"){ state = "paused"; engineStop(); showMsg("Paused", "Your race is waiting.", "Resume"); }
+});
+reset(); draw();
+</script>
+</body>
+</html>

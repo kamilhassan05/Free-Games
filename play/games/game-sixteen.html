@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hangman · Free Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;
+  --yellow:#ffc93c;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(.8rem,env(safe-area-inset-top)) .8rem max(.8rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:.7rem;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:8px}
+header,.stats,.stage,.kb{width:min(100%,440px);min-width:min(100%,300px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;box-shadow:inset 0 0 0 2px var(--line);background:var(--surface)}
+h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.stats{display:flex;justify-content:space-between;gap:.5rem;font-weight:700}
+.stats span{background:var(--surface);padding:.3rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{position:relative;background:#1d1f40;padding:12px 12px 16px;border-radius:24px;box-shadow:0 0 0 3px var(--line);display:flex;flex-direction:column;align-items:center;gap:.6rem}
+.cat{height:1.4em;font:700 .9rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:#a2a6d0}
+svg.gal{height:clamp(130px,26dvh,220px);width:auto;max-width:100%}
+.gal line,.gal circle,.gal path{stroke:#eef0ff;stroke-width:5;stroke-linecap:round;fill:none}
+.gal .p{opacity:0;transition:opacity .2s}.gal .p.on{opacity:1}
+.gal .body line,.gal .body circle{stroke:#ff9a9a}
+.gal .face path{stroke:#ff6b6b;stroke-width:3}
+.word{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 8px;min-height:3rem}
+.ltr{width:clamp(22px,8vw,34px);height:clamp(32px,10vw,42px);display:grid;place-items:center;border-bottom:4px solid #5b5f85;font:800 clamp(1.3rem,6vw,1.9rem) var(--display);color:#eef0ff;text-transform:uppercase}
+.ltr.lost{color:#ff9a9a}
+.kb{display:flex;flex-direction:column;gap:6px}
+.kr{display:flex;gap:5px;justify-content:center}
+.key{flex:1;min-width:0;height:46px;border:0;border-radius:8px;background:var(--surface);color:var(--ink);font:700 .95rem var(--body);cursor:pointer;box-shadow:inset 0 0 0 2px var(--line);padding:0;text-transform:uppercase;touch-action:manipulation}
+.key.hit{background:#25b896;color:#10112a;box-shadow:none}
+.key.miss{background:#14152e;color:#8f94c4;box-shadow:none}
+.key:disabled{cursor:default}
+.overlay{position:absolute;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:.6rem;text-align:center;padding:1.25rem;border-radius:24px;background:rgba(20,21,46,.94);color:#eef0ff;z-index:5}
+.overlay[hidden]{display:none}
+.overlay h2{font:800 2.1rem var(--display);margin:0;letter-spacing:-.02em}
+.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.8rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer}
+.btn.ghost{background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85}
+.picks{display:flex;flex-direction:column;gap:.5rem;width:min(100%,260px);margin-top:.3rem}
+.picks .btn{width:100%;padding:.65rem 2rem}.picks small{display:block;font-weight:500;opacity:.75}
+.clue{min-height:2.7em;text-align:center;color:#ffc93c;font:500 .95rem var(--body);max-width:32ch}
+.hintbtn{border:0;border-radius:999px;padding:.45rem 1.1rem;background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85;font:500 .9rem var(--body);cursor:pointer}
+.hintbtn:disabled{opacity:.45;cursor:default}
+.reveal{font:800 1.8rem var(--display);letter-spacing:.15em;color:#ffc93c;text-transform:uppercase}
+@media (prefers-reduced-motion:reduce){.gal .p{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1>Hangman</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="polite">
+  <span>Streak <b id="streak">0</b></span>
+  <span>Best <b id="best">0</b></span>
+  <span id="lives" aria-label="Lives left">♥♥♥♥♥♥</span>
+</div>
+<div class="stage" id="stage">
+  <div class="cat" id="cat">&nbsp;</div>
+  <svg class="gal" id="gal" viewBox="0 0 200 220" aria-hidden="true">
+    <line class="p" data-s="0" x1="20" y1="210" x2="120" y2="210"/>
+    <line class="p" data-s="1" x1="50" y1="210" x2="50" y2="20"/>
+    <g class="p" data-s="2"><line x1="50" y1="20" x2="140" y2="20"/><line x1="50" y1="48" x2="78" y2="20"/></g>
+    <line class="p" data-s="3" x1="140" y1="20" x2="140" y2="48"/>
+    <g class="body">
+      <circle class="p" data-s="4" cx="140" cy="64" r="16"/>
+      <line class="p" data-s="5" x1="140" y1="80" x2="140" y2="140"/>
+      <line class="p" data-s="6" x1="140" y1="94" x2="116" y2="120"/>
+      <line class="p" data-s="7" x1="140" y1="94" x2="164" y2="120"/>
+      <line class="p" data-s="8" x1="140" y1="140" x2="120" y2="180"/>
+      <line class="p" data-s="9" x1="140" y1="140" x2="160" y2="180"/>
+    </g>
+    <g class="p face" id="face" data-s="x"><path d="M132 58l6 6m0-6l-6 6M142 58l6 6m0-6l-6 6" /></g>
+  </svg>
+  <div class="word" id="word" aria-live="polite"></div>
+  <div class="clue" id="clue" aria-live="polite">&nbsp;</div>
+  <button class="hintbtn" id="hint">💡 Hint</button>
+  <div class="overlay" id="menu">
+    <h2>Hangman</h2>
+    <p>Guess the hidden word one letter at a time before you run out of lives.</p>
+    <div class="picks">
+      <button class="btn pick" data-l="easy">Easy<small>8 lives, short words, category shown</small></button>
+      <button class="btn pick" data-l="medium">Medium<small>7 lives, category shown</small></button>
+      <button class="btn pick" data-l="hard">Hard<small>6 lives, long words, hint costs a life</small></button>
+    </div>
+  </div>
+  <div class="overlay" id="msg" hidden>
+    <h2 id="mtitle"></h2>
+    <p id="mtext"></p>
+    <div class="reveal" id="mword"></div>
+    <button class="btn" id="mainBtn">Next word</button>
+    <button class="btn ghost" id="altBtn">Change level</button>
+  </div>
+</div>
+<div class="kb" id="kb" aria-label="Letters"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const BANK = {
+  Animal: "tiger=Big striped cat of Asia|zebra=Black and white striped horse-like animal|monkey=Swings in trees and loves bananas|rabbit=Long ears, hops, eats carrots|dolphin=Clever sea mammal that clicks and jumps|giraffe=The tallest animal, with a very long neck|penguin=Flightless bird that waddles on ice|elephant=Largest land animal, it has a trunk|kangaroo=Hops and carries its baby in a pouch|crocodile=Big reptile with sharp teeth, lives in rivers|hamster=Small pet that runs on a wheel|leopard=Spotted big cat that climbs trees|buffalo=Large horned animal that grazes in herds|squirrel=Bushy-tailed animal that stores nuts|cheetah=The fastest land animal|octopus=Sea creature with eight arms|panda=Black and white bear that eats bamboo|eagle=Large bird of prey with sharp eyes|parrot=Colorful bird that can copy speech|turtle=Reptile that carries a shell|donkey=Long-eared farm animal that brays|camel=Desert animal with humps|falcon=Fast hunting bird|lion=Known as the king of the jungle|horse=You can ride it and it gallops|sheep=Gives wool and says baa",
+  Food: "pizza=Round Italian dish with cheese and toppings|burger=A patty inside a bun|pasta=Italian dish like spaghetti or macaroni|noodles=Long thin strands served in soup or fried|biryani=Spiced rice dish with meat|chicken=Bird that is often fried or grilled|sandwich=Fillings between two slices of bread|chocolate=Sweet treat made from cocoa|pancake=Flat round breakfast cake|mango=Sweet yellow tropical fruit, the king of fruits|banana=Long yellow fruit with a peel|orange=Citrus fruit that is also a color|grapes=Small round fruit that grows in bunches|cherry=Small red fruit with a stone inside|lemon=Sour yellow citrus fruit|potato=Underground vegetable used for fries|tomato=Red fruit used to make ketchup|carrot=Orange vegetable that rabbits love|broccoli=Green vegetable that looks like tiny trees|cheese=Dairy food made from milk|butter=Spread made from cream|cookie=Sweet baked treat, often with chips|popcorn=Snack that pops when heated, loved at movies",
+  Country: "pakistan=Land of the pure, capital Islamabad|india=Country famous for the Taj Mahal|china=Home of the Great Wall|japan=Land of the rising sun|egypt=Country with pyramids and the Nile|brazil=Country of samba and the Amazon|canada=Northern country known for maple leaves|germany=European country famous for cars, capital Berlin|france=Country of the Eiffel Tower|turkey=Country spanning Europe and Asia, capital Ankara|italy=Boot-shaped country in Europe|spain=European country known for flamenco|norway=Nordic country with deep fjords|sweden=Nordic country, capital Stockholm|mexico=Country south of the USA, famous for tacos|argentina=South American country known for tango|australia=Country and continent with kangaroos|indonesia=Island nation with thousands of islands|malaysia=Asian country with the Petronas Towers|thailand=Southeast Asian country called the Land of Smiles|nigeria=Most populous country in Africa|kenya=East African country famous for safaris",
+  Tech: "laptop=Portable computer you open like a book|keyboard=You type on it|monitor=The screen of a desktop computer|internet=Global network connecting computers|browser=App for visiting websites|program=Set of instructions a computer follows|robot=Machine that can do tasks automatically|battery=Stores power in your phone|circuit=Path that electricity flows through|sensor=Device that detects light, motion or heat|android=Phone system with a green robot logo|website=Collection of web pages|network=Connected devices sharing data|python=Popular programming language named after a comedy group|server=Computer that delivers websites to others|pixel=Smallest dot on a screen|router=Gadget that shares your WiFi|speaker=Device that plays sound|camera=Takes photos|display=Another word for a screen",
+  Sport: "cricket=Played with a bat, ball and stumps|football=Most popular sport, played with a round ball and goals|hockey=Players use sticks to hit a ball or puck|tennis=Racket sport played over a net|badminton=Racket sport using a shuttlecock|baseball=Bat and ball game with four bases|cycling=Racing on two wheels|swimming=Racing through water|wrestling=Grappling sport on a mat|archery=Shooting arrows at a target|boxing=Fighting sport with gloves in a ring|rugby=Rough game with an oval ball|volleyball=Hit a ball over a high net with your hands|basketball=Shoot a ball through a hoop|skating=Gliding on ice or rollers"
+};
+const WORDS = Object.entries(BANK).flatMap(([c, str]) => str.split("|").map(e => { const [w, h] = e.split("="); return { w, c, h }; }));
+const LEVELS = { easy: { lives: 8, min: 4, max: 6, hint: true, cost: 0 }, medium: { lives: 7, min: 5, max: 8, hint: true, cost: 0 }, hard: { lives: 6, min: 7, max: 12, hint: false, cost: 1 } };
+let hintUsed = false, hintText = "", level = "medium", cfg = LEVELS.medium, word = "", cat = "", guessed = new Set(), wrong = 0, state = "menu", streak = 0, best = 0, pool = [];
+
+/* Audio (synthesized, no files needed) */
+let actx = null, muted = false;
+try { muted = localStorage.getItem("hang-muted") === "1"; } catch(e) {}
+function ac(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(f, d, type = "sine", v = .1, when = 0, to){
+  if (muted) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + when;
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+  g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + .02);
+}
+const sfx = {
+  right(){ tone(660, .08, "square", .06); tone(880, .1, "square", .06, .06); },
+  wrong(){ tone(200, .22, "sawtooth", .1, 0, 90); },
+  win(){ [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .16, "square", .06, i * .09)); },
+  lose(){ [330, 262, 220, 165].forEach((f, i) => tone(f, .24, "triangle", .12, i * .18)); },
+  start(){ [392, 523, 659].forEach((f, i) => tone(f, .1, "square", .05, i * .08)); }
+};
+function paintMute(){ const m = $("mute"); m.textContent = muted ? "🔇" : "🔊"; m.setAttribute("aria-pressed", muted); m.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound"); }
+$("mute").addEventListener("click", () => {
+  muted = !muted; paintMute();
+  try { localStorage.setItem("hang-muted", muted ? "1" : "0"); } catch(e) {}
+  if (!muted) ac();
+});
+paintMute();
+
+/* Game */
+function load(){ try { streak = +localStorage.getItem("hang-streak-" + level) || 0; best = +localStorage.getItem("hang-best-" + level) || 0; } catch(e) { streak = 0; best = 0; } }
+function save(){ try { localStorage.setItem("hang-streak-" + level, streak); localStorage.setItem("hang-best-" + level, best); } catch(e) {} }
+function hud(){
+  $("streak").textContent = streak; $("best").textContent = best;
+  const left = Math.max(cfg.lives - wrong, 0); $("lives").textContent = "♥".repeat(left) + "♡".repeat(cfg.lives - left);
+}
+function drawGallows(){
+  const pre = 10 - cfg.lives, shown = pre + wrong;
+  document.querySelectorAll("#gal .p[data-s]").forEach(el => { const s = el.dataset.s; el.classList.toggle("on", s === "x" ? wrong >= cfg.lives : +s < shown); });
+}
+function renderWord(reveal){
+  $("word").innerHTML = [...word].map(ch => {
+    const show = guessed.has(ch) || reveal; return '<span class="ltr' + (reveal && !guessed.has(ch) ? " lost" : "") + '">' + (show ? ch : "") + "</span>";
+  }).join("");
+  $("word").setAttribute("aria-label", [...word].map(ch => guessed.has(ch) ? ch : "blank").join(" "));
+}
+function buildKb(){
+  $("kb").innerHTML = ["qwertyuiop", "asdfghjkl", "zxcvbnm"].map(r => '<div class="kr">' + [...r].map(ch => '<button class="key" data-k="' + ch + '">' + ch + "</button>").join("") + "</div>").join("");
+}
+function nextWord(){
+  const ok = WORDS.filter(x => x.w.length >= cfg.min && x.w.length <= cfg.max);
+  if (!pool.length || pool.some(x => !ok.includes(x))) pool = ok.slice().sort(() => Math.random() - .5);
+  const pick = pool.pop(); word = pick.w; cat = pick.c;
+  guessed = new Set(); wrong = 0; state = "play"; load(); hintUsed = false; hintText = pick.h;
+  $("clue").textContent = "\u00a0"; $("hint").disabled = false; $("hint").textContent = cfg.cost ? "💡 Hint (costs a life)" : "💡 Hint";
+  $("cat").textContent = cfg.hint ? cat : "Category hidden";
+  buildKb(); renderWord(false); drawGallows(); hud(); $("msg").hidden = true;
+}
+function startLevel(l){ level = l; cfg = LEVELS[l]; pool = []; $("menu").hidden = true; ac(); sfx.start(); nextWord(); }
+function showMenu(){ state = "menu"; $("msg").hidden = true; $("menu").hidden = false; }
+function guess(ch){
+  if (state !== "play" || guessed.has(ch)) return;
+  guessed.add(ch);
+  const key = document.querySelector('.key[data-k="' + ch + '"]'), hit = word.includes(ch);
+  if (key){ key.classList.add(hit ? "hit" : "miss"); key.disabled = true; }
+  if (hit){ sfx.right(); } else { wrong++; sfx.wrong(); }
+  renderWord(false); drawGallows(); hud();
+  if ([...word].every(c => guessed.has(c))) return finish(true);
+  if (wrong >= cfg.lives) finish(false);
+}
+function finish(won){
+  state = "over"; $("hint").disabled = true;
+  if (won){ streak++; best = Math.max(best, streak); setTimeout(sfx.win, 200); }
+  else { streak = 0; renderWord(true); setTimeout(sfx.lose, 200); }
+  save(); hud();
+  document.querySelectorAll(".key").forEach(k => k.disabled = true);
+  setTimeout(() => {
+    $("mtitle").textContent = won ? "You saved him!" : "Game over";
+    $("mtext").textContent = won ? (wrong ? "You made " + wrong + (wrong === 1 ? " mistake." : " mistakes.") : "Perfect, no mistakes!") : "The word was:";
+    $("mword").textContent = won ? "" : word;
+    $("msg").hidden = false; $("mainBtn").focus();
+  }, won ? 900 : 1200);
+}
+
+function useHint(){
+  if (state !== "play" || hintUsed) return; ac();
+  if (cfg.cost && cfg.lives - wrong <= cfg.cost){ $("clue").textContent = "Not enough lives left for a hint."; return; }
+  hintUsed = true; $("hint").disabled = true;
+  if (cfg.cost){ wrong += cfg.cost; sfx.wrong(); drawGallows(); hud(); $("cat").textContent = cat; }
+  $("clue").textContent = "Hint: " + hintText;
+}
+$("hint").addEventListener("click", useHint);
+
+/* Input */
+addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || state !== "play") return;
+  if (/^[a-zA-Z]$/.test(e.key)){ ac(); guess(e.key.toLowerCase()); }
+});
+$("kb").addEventListener("click", e => { const k = e.target.closest(".key"); if (k){ ac(); guess(k.dataset.k); k.blur(); } });
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => startLevel(b.dataset.l)));
+$("mainBtn").addEventListener("click", nextWord);
+$("altBtn").addEventListener("click", showMenu);
+buildKb(); load(); hud(); drawGallows(); $("word").innerHTML = "";
+</script>
+</body>
+</html>

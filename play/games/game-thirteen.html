@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sky Flap · Free Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;
+  --yellow:#ffc93c;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:1rem;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+header,.stats{width:min(100%,440px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;box-shadow:inset 0 0 0 2px var(--line);background:var(--surface)}
+h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.stats{display:flex;justify-content:space-between;font-weight:700}
+.stats span{background:var(--surface);padding:.35rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{position:relative;width:min(100%,440px,calc((100dvh - 190px) * 2 / 3));aspect-ratio:2/3;border-radius:24px;overflow:hidden;background:#1d1f40;touch-action:none;box-shadow:0 0 0 3px var(--line);user-select:none;-webkit-user-select:none}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:.7rem;text-align:center;padding:1.5rem;background:rgba(20,21,46,.88);color:#eef0ff}
+.overlay[hidden]{display:none}
+.overlay h2{font:800 2.2rem var(--display);margin:0;letter-spacing:-.02em}
+.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.85rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer}
+.btn.ghost{background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85}
+.picks{display:flex;flex-direction:column;gap:.6rem;width:min(100%,260px);margin-top:.4rem}
+.picks .btn{width:100%}.picks small{display:block;font-weight:500;opacity:.75}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1>Sky Flap</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="polite">
+  <span>Score <b id="score">0</b></span>
+  <span>Best <b id="best">0</b></span>
+</div>
+<div class="stage" id="stage">
+  <canvas id="c" width="400" height="600" aria-label="Sky Flap game board"></canvas>
+  <div class="overlay" id="menu">
+    <h2>Sky Flap</h2>
+    <p>Tap to flap and fly through the gaps. Don&rsquo;t touch the pipes or the ground.</p>
+    <div class="picks">
+      <button class="btn pick" data-l="easy">Easy<small>Big gaps, slow</small></button>
+      <button class="btn pick" data-l="medium">Medium<small>Balanced</small></button>
+      <button class="btn pick" data-l="hard">Hard<small>Tight gaps, fast</small></button>
+    </div>
+    <p style="font-size:.9rem">Tap or click anywhere, or press Space, to flap.</p>
+  </div>
+  <div class="overlay" id="msg" hidden>
+    <h2 id="mtitle"></h2>
+    <p id="mtext"></p>
+    <button class="btn" id="mainBtn"></button>
+    <button class="btn ghost" id="altBtn">Change level</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cv = $("c"), ctx = cv.getContext("2d"), W = 400, H = 600, GROUND = H - 60, PW = 62, R = 14, BX = 110;
+const LEVELS = {
+  easy:   { speed: 120, gap: 190, space: 250 },
+  medium: { speed: 150, gap: 160, space: 240 },
+  hard:   { speed: 185, gap: 138, space: 230 }
+};
+let level = "medium", cfg = LEVELS.medium, state = "menu";
+let bird, pipes, score, best = 0, last, groundX = 0, wing = 0, t = 0, lastGapY = 300, sinceSpawn = 0, hint;
+const clouds = Array.from({ length: 5 }, (_, i) => ({ x: i * 90, y: 60 + Math.random() * 220, w: 50 + Math.random() * 50, s: 10 + Math.random() * 14 }));
+
+/* Audio (synthesized, no files needed) */
+let actx = null, muted = false;
+try { muted = localStorage.getItem("flap-muted") === "1"; } catch(e) {}
+function ac(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(f, d, type = "sine", v = .1, when = 0, to){
+  if (muted) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + when;
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+  g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + .02);
+}
+const sfx = {
+  flap(){ tone(380, .1, "triangle", .09, 0, 620); },
+  score(){ tone(880, .07, "square", .05); tone(1175, .12, "square", .05, .07); },
+  hit(){ tone(160, .25, "sawtooth", .15, 0, 60); },
+  over(){ [392, 330, 262, 196].forEach((f, i) => tone(f, .2, "triangle", .11, .15 + i * .14)); },
+  start(){ [392, 523, 659].forEach((f, i) => tone(f, .1, "square", .05, i * .08)); }
+};
+function paintMute(){ const b = $("mute"); b.textContent = muted ? "🔇" : "🔊"; b.setAttribute("aria-pressed", muted); b.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound"); }
+$("mute").addEventListener("click", () => {
+  muted = !muted; paintMute();
+  try { localStorage.setItem("flap-muted", muted ? "1" : "0"); } catch(e) {}
+  if (!muted) ac();
+});
+paintMute();
+
+/* Game */
+function loadBest(){ try { best = +localStorage.getItem("flap-best-" + level) || 0; } catch(e) { best = 0; } $("best").textContent = best; }
+function reset(){
+  bird = { y: 280, vy: 0, rot: 0 }; pipes = []; score = 0; sinceSpawn = cfg.space - 120; lastGapY = 300; t = 0; hint = true;
+  $("score").textContent = 0; loadBest();
+}
+function startGame(l){
+  level = l; cfg = LEVELS[l]; reset(); state = "ready";
+  $("menu").hidden = true; $("msg").hidden = true; last = performance.now(); ac(); sfx.start(); requestAnimationFrame(loop);
+}
+function showMsg(title, text, main){
+  $("mtitle").textContent = title; $("mtext").textContent = text; $("mainBtn").textContent = main;
+  $("msg").hidden = false; $("mainBtn").focus();
+}
+function showMenu(){ state = "menu"; $("msg").hidden = true; $("menu").hidden = false; reset(); draw(); }
+function flap(){
+  if (state === "ready"){ state = "playing"; hint = false; }
+  if (state !== "playing") return;
+  ac(); bird.vy = -420; sfx.flap();
+}
+function spawn(){
+  const min = 110, max = GROUND - cfg.gap - 80;
+  const y = Math.max(min, Math.min(max, lastGapY + (Math.random() - .5) * 260)); lastGapY = y;
+  pipes.push({ x: W + 10, gy: y, scored: false });
+}
+function crash(){
+  state = "over"; sfx.hit(); sfx.over();
+  if (score > best){ best = score; $("best").textContent = best; try { localStorage.setItem("flap-best-" + level, best); } catch(e) {} }
+  setTimeout(() => { if (state === "over") showMsg("Game over", "You passed " + score + " pipes. Best: " + best + ".", "Play again"); }, 900);
+}
+function hitPipe(p){
+  const inX = BX + R > p.x && BX - R < p.x + PW; if (!inX) return false;
+  return bird.y - R < p.gy || bird.y + R > p.gy + cfg.gap;
+}
+function loop(now){
+  if (state === "menu" || state === "paused") return;
+  const dt = Math.min((now - last) / 1000, .05); last = now; t += dt; wing += dt * 14;
+  const moving = state === "playing";
+  if (state === "ready"){ bird.y = 280 + Math.sin(t * 4) * 8; bird.rot = 0; }
+  else {
+    bird.vy += 1450 * dt; bird.y += bird.vy * dt; bird.rot = Math.max(-.5, Math.min(1.2, bird.vy / 520));
+    if (bird.y < R){ bird.y = R; bird.vy = 0; }
+    if (bird.y + R >= GROUND){ bird.y = GROUND - R; if (state === "playing") crash(); }
+  }
+  if (moving){
+    const sp = cfg.speed + Math.min(score, 40) * 1.5;
+    groundX = (groundX + sp * dt) % 24; sinceSpawn += sp * dt;
+    if (sinceSpawn >= cfg.space){ sinceSpawn = 0; spawn(); }
+    for (let i = pipes.length - 1; i >= 0; i--){
+      const p = pipes[i]; p.x -= sp * dt;
+      if (!p.scored && p.x + PW < BX - R){ p.scored = true; score++; $("score").textContent = score; sfx.score(); }
+      if (hitPipe(p)){ crash(); break; }
+      if (p.x < -PW - 10) pipes.splice(i, 1);
+    }
+  }
+  for (const c of clouds){ if (state !== "over") c.x -= c.s * dt; if (c.x + c.w < 0) c.x = W + Math.random() * 60; }
+  draw();
+  if (state === "ready" || state === "playing" || (state === "over" && bird.y + R < GROUND)) requestAnimationFrame(loop);
+  else if (state === "over") draw();
+}
+function rr(x, y, w, h, r){ ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); }
+function pipe(x, y, h, cap){
+  ctx.fillStyle = "#25b896"; ctx.fillRect(x + 4, y, PW - 8, h);
+  ctx.fillStyle = "#1c8a72"; ctx.fillRect(x + PW - 14, y, 6, h);
+  ctx.fillStyle = "#2fd1ab"; rr(x, cap, PW, 24, 6);
+}
+function draw(){
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#1d1f40"); g.addColorStop(1, "#2f3466");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(255,255,255,.07)"; for (const c of clouds) rr(c.x, c.y, c.w, 18, 9);
+  for (const p of pipes){
+    pipe(p.x, 0, p.gy - 24, p.gy - 24);
+    pipe(p.x, p.gy + cfg.gap + 24, GROUND - p.gy - cfg.gap - 24, p.gy + cfg.gap);
+  }
+  ctx.fillStyle = "#14152e"; ctx.fillRect(0, GROUND, W, H - GROUND);
+  ctx.fillStyle = "#3d4388"; ctx.fillRect(0, GROUND, W, 6);
+  ctx.fillStyle = "#262a58"; for (let x = -24 + (24 - groundX); x < W; x += 24) ctx.fillRect(x, GROUND + 14, 12, 8);
+  ctx.save(); ctx.translate(BX, bird.y); ctx.rotate(bird.rot);
+  ctx.fillStyle = "#ffc93c"; ctx.beginPath(); ctx.arc(0, 0, R + 2, 0, 7); ctx.fill();
+  ctx.fillStyle = "#e0a200"; ctx.beginPath(); ctx.ellipse(-4, 3 + Math.sin(wing) * 3, 8, 5, -.3, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ff6b6b"; ctx.beginPath(); ctx.moveTo(R, -2); ctx.lineTo(R + 9, 2); ctx.lineTo(R, 6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(5, -5, 5, 0, 7); ctx.fill();
+  ctx.fillStyle = "#1a1b3a"; ctx.beginPath(); ctx.arc(7, -5, 2.4, 0, 7); ctx.fill();
+  ctx.restore();
+  ctx.textAlign = "center";
+  if (state !== "menu"){ ctx.font = "800 64px 'Bricolage Grotesque', system-ui, sans-serif"; ctx.fillStyle = "rgba(238,240,255,.9)"; ctx.fillText(score, W / 2, 90); }
+  if (state === "ready" && hint){ ctx.font = "700 17px 'DM Sans', system-ui, sans-serif"; ctx.fillStyle = "#ffc93c"; ctx.fillText("Tap to flap", W / 2, 360); }
+}
+
+/* Input */
+$("stage").addEventListener("pointerdown", e => { if (state === "ready" || state === "playing"){ e.preventDefault(); flap(); } });
+addEventListener("keydown", e => { if ((e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W") && (state === "ready" || state === "playing")){ e.preventDefault(); flap(); } });
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => startGame(b.dataset.l)));
+let resumeTo = "ready";
+$("mainBtn").addEventListener("click", () => {
+  if (state === "paused"){ state = resumeTo; $("msg").hidden = true; last = performance.now(); requestAnimationFrame(loop); }
+  else startGame(level);
+});
+$("altBtn").addEventListener("click", showMenu);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && (state === "ready" || state === "playing")){ resumeTo = state; state = "paused"; showMsg("Paused", "Your game is waiting.", "Resume"); }
+});
+reset(); draw();
+</script>
+</body>
+</html>
