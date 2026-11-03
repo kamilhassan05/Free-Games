@@ -3,6 +3,7 @@
 A browser-based ESP32 flasher for the **Free Games** project — a website with 21 single-file HTML games served from SPIFFS on an ESP32. Flash it straight from Chrome or Edge. No Arduino IDE, no PlatformIO, no software to install.
 
 Live flasher for Esp: `https://kamilhassan05.github.io/Free-Games/`
+
 Play online without Esp: `https://kamilhassan05.github.io/Free-Games/play/`
 
 ---
