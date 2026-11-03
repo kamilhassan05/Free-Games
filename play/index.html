@@ -1,1 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Free Games</title>
+<meta name="description" content="Play free browser games instantly. No downloads, no sign-ups.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#f2f4ff; --surface:#ffffff; --ink:#1a1b3a; --muted:#5b5f85; --line:#dde1f7;
+  --blue:#3b4bff; --yellow:#ffc93c; --coral:#ff6b6b; --mint:#25b896;
+  --on-blue:#ffffff;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --radius:20px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14152e; --surface:#1d1f40; --ink:#eef0ff; --muted:#a2a6d0; --line:#2d3060;
+    --blue:#6f7bff; --on-blue:#10112a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14152e; --surface:#1d1f40; --ink:#eef0ff; --muted:#a2a6d0; --line:#2d3060;
+  --blue:#6f7bff; --on-blue:#10112a; color-scheme:dark;
+}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 84px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 1rem/1.6 var(--body);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+.wrap{width:min(1160px,100% - 2.5rem);margin-inline:auto}
+h1,h2,h3{font-family:var(--display);line-height:1.05;margin:0;letter-spacing:-.02em}
 
+/* Nav */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:68px}
+.logo{display:flex;align-items:center;gap:.6rem;font:800 1.35rem var(--display);letter-spacing:-.02em}
+.logo-mark{width:34px;height:34px;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.logo-mark i{border-radius:6px}
+.logo-mark i:nth-child(1){background:var(--blue)}.logo-mark i:nth-child(2){background:var(--yellow);border-radius:50%}
+.logo-mark i:nth-child(3){background:var(--coral);border-radius:50%}.logo-mark i:nth-child(4){background:var(--mint)}
+.links{display:flex;align-items:center;gap:.25rem;list-style:none;margin:0;padding:0}
+.links a{display:block;padding:.5rem .9rem;border-radius:999px;font-weight:500;color:var(--muted);transition:background .2s,color .2s}
+.links a:hover{background:var(--surface);color:var(--ink)}
+.nav-actions{display:flex;align-items:center;gap:.5rem}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.4rem;border:0;border-radius:999px;font:700 1rem var(--body);cursor:pointer;background:var(--blue);color:var(--on-blue);transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn.alt{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.icon-btn{width:42px;height:42px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);cursor:pointer;font-size:1.1rem;box-shadow:inset 0 0 0 2px var(--line)}
+.menu-btn{display:none}
+@media (max-width:760px){
+  .menu-btn{display:inline-grid;place-items:center}
+  .links{position:absolute;left:0;right:0;top:100%;flex-direction:column;align-items:stretch;padding:.75rem 1.25rem 1.25rem;background:var(--bg);border-bottom:1px solid var(--line);display:none}
+  .links.open{display:flex}
+  .links a{padding:.8rem 1rem}
+  .nav-actions .btn{display:none}
+}
+
+/* Hero */
+.hero{padding:clamp(2.5rem,7vw,6rem) 0 clamp(2rem,5vw,4rem)}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(2rem,5vw,4rem);align-items:center}
+.hero h1{font-size:clamp(2.7rem,7vw,5.4rem);font-weight:800}
+.hero h1 span{display:inline-block;background:var(--yellow);color:#1a1b3a;padding:0 .2em;border-radius:.2em;transform:rotate(-2deg)}
+.hero p{max-width:46ch;color:var(--muted);font-size:1.15rem;margin:1.4rem 0 2rem}
+.cta{display:flex;flex-wrap:wrap;gap:.8rem}
+.facts{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;margin:2rem 0 0;padding:0;list-style:none;color:var(--muted);font-size:.95rem}
+.facts li::before{content:"✓";color:var(--mint);font-weight:700;margin-right:.45rem}
+.hero{overflow-x:clip}
+/* Hero art */
+.art{position:relative;width:100%;max-width:460px;aspect-ratio:1;justify-self:center}
+.art-card{position:absolute;inset:7% 9% 11% 9%;border-radius:36px;background:linear-gradient(150deg,#4f5bff 0%,#7c5cff 55%,#b05cff 100%);box-shadow:0 30px 60px -22px rgba(59,75,255,.6),inset 0 0 0 2px rgba(255,255,255,.2);display:grid;place-items:center;overflow:hidden}
+.art-card::before,.art-card::after{content:"";position:absolute;border-radius:50%}
+.art-card::before{width:62%;aspect-ratio:1;top:-20%;right:-16%;background:rgba(255,255,255,.14)}
+.art-card::after{width:46%;aspect-ratio:1;bottom:-18%;left:-14%;background:rgba(255,201,60,.24)}
+.gp{position:relative;z-index:1;width:80%;margin-bottom:12%;filter:drop-shadow(0 16px 20px rgba(16,17,42,.38))}
+.start{position:absolute;z-index:1;left:50%;bottom:8%;transform:translateX(-50%);background:rgba(255,255,255,.2);color:#fff;font:800 clamp(.72rem,2.4vw,1rem) var(--display);letter-spacing:.14em;padding:.5rem 1.3rem;border-radius:999px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);white-space:nowrap;animation:blink 1.8s ease-in-out infinite}
+.fchip{position:absolute;z-index:2;display:flex;align-items:center;gap:.5rem;padding:.55rem .95rem;background:var(--surface);color:var(--ink);border-radius:16px;font:700 clamp(.78rem,2.2vw,.95rem) var(--body);box-shadow:0 14px 30px -12px rgba(16,17,42,.4),inset 0 0 0 2px var(--line);white-space:nowrap;animation:float 5s ease-in-out infinite}
+.fchip i{font-style:normal;font-size:1.2em}
+.fchip.c1{top:1%;left:1%}
+.fchip.c2{top:64%;right:-1%;animation-delay:-1.7s}
+.fchip.c3{bottom:1%;left:7%;animation-delay:-3.3s}
+@keyframes float{50%{transform:translateY(-9px)}}
+@keyframes blink{50%{opacity:.55}}
+@media (max-width:860px){.hero .wrap{grid-template-columns:1fr}.art{max-width:380px;justify-self:center;margin-top:.5rem}.cta{flex-direction:column}.cta .btn{width:100%}}
+@media (prefers-reduced-motion:reduce){.fchip,.start{animation:none}}
+
+/* Sections */
+section{padding:clamp(2rem,5vw,3.5rem) 0}
+.head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:1rem;margin-bottom:1.5rem}
+.head h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800}
+.search{display:flex;align-items:center;gap:.5rem;background:var(--surface);border-radius:999px;padding:.2rem 1rem;box-shadow:inset 0 0 0 2px var(--line);min-width:min(100%,280px)}
+.search input{flex:1;border:0;background:none;color:var(--ink);font:inherit;padding:.6rem 0;outline:none;min-width:0}
+.search:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.75rem}
+.chip{border:0;cursor:pointer;font:500 .95rem var(--body);color:var(--ink);background:var(--surface);padding:.5rem 1.05rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);box-shadow:none}
+
+/* Game grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1.25rem}
+.card{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:inset 0 0 0 2px var(--line);transition:transform .2s}
+.card:hover{transform:translateY(-4px)}
+.thumb{aspect-ratio:4/3;display:grid;place-items:center;font-size:3.5rem;color:#1a1b3a}
+.card-body{padding:1rem 1.15rem 1.2rem;display:flex;flex-direction:column;gap:.15rem}
+.card h3{font-size:1.2rem;font-weight:800}
+.card small{color:var(--muted);font-size:.9rem}
+.empty{grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--muted);border:2px dashed var(--line);border-radius:var(--radius)}
+
+/* Cats + footer */
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+.cat{display:flex;align-items:center;gap:1rem;padding:1.2rem;border-radius:var(--radius);background:var(--surface);box-shadow:inset 0 0 0 2px var(--line);cursor:pointer;border:0;font:inherit;color:inherit;text-align:left}
+.cat b{display:block;font:800 1.1rem var(--display)}
+.cat span.ico{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:1.6rem;flex:none}
+.cat small{color:var(--muted)}
+footer{margin-top:2rem;border-top:1px solid var(--line);padding:2.5rem 0 2rem}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1.5rem}
+footer p{color:var(--muted);margin:.5rem 0 0;max-width:34ch}
+footer ul{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;list-style:none;margin:0;padding:0;color:var(--muted)}
+footer a:hover{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* Contact / copy rows */
+.contact{display:flex;flex-direction:column;gap:.75rem;margin-top:1.5rem;max-width:560px}
+.contact-row{display:flex;align-items:center;gap:.6rem;background:var(--surface);border-radius:14px;padding:.55rem .75rem .55rem 1rem;box-shadow:inset 0 0 0 2px var(--line);flex-wrap:wrap}
+.contact-row .ico{font-size:1.25rem;flex:none}
+.contact-row .label{font:700 .9rem var(--body);color:var(--muted);flex:none;min-width:78px}
+.contact-row .val{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.contact-row .val a{color:var(--blue);font-weight:700}
+.contact-row .val a:hover{text-decoration:underline}
+.copy-btn{display:inline-flex;align-items:center;gap:.35rem;border:0;cursor:pointer;background:var(--bg);color:var(--ink);font:700 .8rem var(--body);padding:.45rem .75rem;border-radius:10px;box-shadow:inset 0 0 0 2px var(--line);transition:background .2s,color .2s;white-space:nowrap}
+.copy-btn:hover{background:var(--blue);color:var(--on-blue);box-shadow:none}
+.copy-btn.copied{background:var(--mint);color:#fff;box-shadow:none}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Free Games home"><span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Free Games</a>
+    <nav aria-label="Main">
+      <ul class="links" id="links">
+        <li><a href="#top">Home</a></li>
+        <li><a href="#games">All games</a></li>
+        <li><a href="#categories">Categories</a></li>
+        <li><a href="#about">About</a></li>
+      </ul>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn" href="#games">Play now</a>
+      <button class="icon-btn" id="theme" aria-label="Switch theme">◐</button>
+      <button class="icon-btn menu-btn" id="menu" aria-label="Open menu" aria-expanded="false" aria-controls="links">☰</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <h1>Games you can <span>play</span> right now.</h1>
+        <p>Free browser games for your phone or computer. Pick one, click, and you&rsquo;re playing in seconds.</p>
+        <div class="cta">
+          <a class="btn" href="#games">Browse games</a>
+          <button class="btn alt" id="random" type="button">🎲 Surprise me</button>
+        </div>
+        <ul class="facts"><li>Always free</li><li>No downloads</li><li>No sign-up</li><li id="count"></li></ul>
+      </div>
+      <div class="art" aria-hidden="true">
+        <div class="art-card">
+          <svg class="gp" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+            <rect x="50" y="26" width="48" height="14" rx="7" fill="#e7e9ff"/>
+            <rect x="142" y="26" width="48" height="14" rx="7" fill="#e7e9ff"/>
+            <rect x="30" y="76" width="50" height="72" rx="25" transform="rotate(14 55 112)" fill="#ffffff"/>
+            <rect x="160" y="76" width="50" height="72" rx="25" transform="rotate(-14 185 112)" fill="#ffffff"/>
+            <rect x="38" y="38" width="164" height="86" rx="42" fill="#ffffff"/>
+            <g fill="#1a1b3a"><rect x="62" y="74" width="34" height="12" rx="4"/><rect x="73" y="63" width="12" height="34" rx="4"/></g>
+            <circle cx="161" cy="66" r="7.5" fill="#ffc93c"/><circle cx="177" cy="81" r="7.5" fill="#ff6b6b"/>
+            <circle cx="161" cy="96" r="7.5" fill="#25b896"/><circle cx="145" cy="81" r="7.5" fill="#6f7bff"/>
+            <ellipse cx="112" cy="70" rx="7" ry="4" fill="#c9cdf0"/><ellipse cx="128" cy="70" rx="7" ry="4" fill="#c9cdf0"/>
+          </svg>
+          <div class="start">PRESS START</div>
+        </div>
+        <div class="fchip c1"><i>🎯</i><span><span id="count2">21</span> games</span></div>
+        <div class="fchip c2"><i>⚡</i>Instant play</div>
+        <div class="fchip c3"><i>📶</i>Works offline</div>
+      </div>
+    </div>
+  </div>
+
+  <section id="games">
+    <div class="wrap">
+      <div class="head">
+        <h2>All games</h2>
+        <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="Search games" aria-label="Search games"></label>
+      </div>
+      <div class="chips" id="chips" role="group" aria-label="Filter by category"></div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </section>
+
+  <section id="categories">
+    <div class="wrap">
+      <div class="head"><h2>Pick a category</h2></div>
+      <div class="cats" id="cats"></div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="wrap">
+      <div class="head"><h2>About Free Games</h2></div>
+      <p style="max-width:62ch;color:var(--muted);margin:0">Free Games is a collection of small, fast games that run in your browser. Every game is free to play, and new ones are added regularly.</p>
+
+      <!-- Contact / social links with copy buttons -->
+      <div class="contact" aria-label="Contact and social links">
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">👤</span>
+          <span class="label">Name</span>
+          <span class="val"><strong>Kamil Hassan</strong></span>
+          <button class="copy-btn" data-copy="Kamil Hassan" aria-label="Copy name">📋 Copy</button>
+        </div>
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">📸</span>
+          <span class="label">Instagram</span>
+          <span class="val"><a href="https://www.instagram.com/kamil.hassan512" target="_blank" rel="noopener">kamil.hassan512</a></span>
+          <button class="copy-btn" data-copy="https://www.instagram.com/kamil.hassan512" aria-label="Copy Instagram profile link">📋 Copy</button>
+        </div>
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">📧</span>
+          <span class="label">Email</span>
+          <span class="val"><a href="mailto:kamilhassan085@gmail.com">kamilhassan085@gmail.com</a></span>
+          <button class="copy-btn" data-copy="kamilhassan085@gmail.com" aria-label="Copy email address">📋 Copy</button>
+        </div>
+        <div class="contact-row">
+          <span class="ico" aria-hidden="true">🐙</span>
+          <span class="label">GitHub</span>
+          <span class="val"><a href="https://github.com/kamilhassan05" target="_blank" rel="noopener">https://github.com/kamilhassan05</a></span>
+          <button class="copy-btn" data-copy="https://github.com/kamilhassan05" aria-label="Copy GitHub profile link">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* Add each new game here. href points to your game's HTML file. */
+const GAMES = [
+  {title:"Coin Dodge", cat:"Arcade", href:"games/game-one.html", emoji:"🪙", color:"#ffc93c"},
+  {title:"Memory Match", cat:"Puzzle", href:"games/game-two.html", emoji:"🧠", color:"#8fa0ff"},
+  {title:"Star Blaster", cat:"Action", href:"games/game-three.html", emoji:"🚀", color:"#ff9a9a"},
+  {title:"Road Rush", cat:"Racing", href:"games/game-four.html", emoji:"🏎️", color:"#6ee0c4"},
+  {title:"Merge Up", cat:"Puzzle", href:"games/game-five.html", emoji:"🔢", color:"#ffc93c"},
+  {title:"Brick Breaker", cat:"Arcade", href:"games/game-six.html", emoji:"🧱", color:"#ff9a5c"},
+  {title:"Tic Tac Toe", cat:"Strategy", href:"games/game-seven.html", emoji:"❌", color:"#8fa0ff"},
+  {title:"Pattern Pulse", cat:"Puzzle", href:"games/game-eight.html", emoji:"🎵", color:"#c4a8ff"},
+  {title:"Whack-a-Mole", cat:"Arcade", href:"games/game-nine.html", emoji:"🔨", color:"#ff9a5c"},
+  {title:"Mine Sweeper", cat:"Puzzle", href:"games/game-ten.html", emoji:"💣", color:"#ff9a9a"},
+  {title:"Stack Tower", cat:"Arcade", href:"games/game-eleven.html", emoji:"🏗️", color:"#6ee0c4"},
+  {title:"Slide Puzzle", cat:"Puzzle", href:"games/game-twelve.html", emoji:"🧩", color:"#8fa0ff"},
+  {title:"Sky Flap", cat:"Arcade", href:"games/game-thirteen.html", emoji:"🐤", color:"#ffc93c"},
+  {title:"Snake", cat:"Arcade", href:"games/game-fourteen.html", emoji:"🐍", color:"#6ee0c4"},
+  {title:"Connect Four", cat:"Strategy", href:"games/game-fifteen.html", emoji:"🔴", color:"#ff9a9a"},
+  {title:"Hangman", cat:"Word", href:"games/game-sixteen.html", emoji:"🔤", color:"#6ee0c4"},
+  {title:"Color Clash", cat:"Puzzle", href:"games/game-seventeen.html", emoji:"🎨", color:"#c4a8ff"},
+  {title:"Ping Pong", cat:"Arcade", href:"games/game-eighteen.html", emoji:"🏓", color:"#8fa0ff"},
+  {title:"Code Breaker", cat:"Puzzle", href:"games/game-nineteen.html", emoji:"🔐", color:"#c4a8ff"},
+  {title:"Bolt Runner", cat:"Action", href:"games/game-twenty.html", emoji:"🤖", color:"#8fa0ff"},
+  {title:"Hop Across", cat:"Arcade", href:"games/game-twentyone.html", emoji:"🐥", color:"#ffc93c"}
+];
+const CATS = {Arcade:["🕹️","#ffc93c"],Puzzle:["🧩","#8fa0ff"],Action:["🚀","#ff9a9a"],Racing:["🏎️","#6ee0c4"],Strategy:["♟️","#8fa0ff"],Word:["🔤","#6ee0c4"]};
+let active = "All";
+const grid = document.getElementById("grid"), q = document.getElementById("q");
+const chips = document.getElementById("chips"), cats = document.getElementById("cats");
+
+function render(){
+  const term = q.value.trim().toLowerCase();
+  const list = GAMES.filter(g => (active==="All"||g.cat===active) && g.title.toLowerCase().includes(term));
+  grid.innerHTML = list.length ? list.map(g =>
+    `<a class="card" href="${g.href}"><div class="thumb" style="background:${g.color}">${g.emoji}</div>
+     <div class="card-body"><h3>${g.title}</h3><small>${g.cat}</small></div></a>`).join("")
+    : `<div class="empty">No games found. Try another search or category.</div>`;
+  chips.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.c===active));
+}
+chips.innerHTML = ["All",...Object.keys(CATS)].map(c => `<button class="chip" data-c="${c}" aria-pressed="false">${c}</button>`).join("");
+cats.innerHTML = Object.entries(CATS).map(([n,[e,c]]) => {
+  const k = GAMES.filter(g=>g.cat===n).length;
+  return `<button class="cat" data-c="${n}"><span class="ico" style="background:${c}">${e}</span><span><b>${n}</b><small>${k} ${k===1?"game":"games"}</small></span></button>`;
+}).join("");
+chips.addEventListener("click", e => { const b=e.target.closest(".chip"); if(b){active=b.dataset.c;render();} });
+cats.addEventListener("click", e => { const b=e.target.closest(".cat"); if(b){active=b.dataset.c;render();document.getElementById("games").scrollIntoView();} });
+q.addEventListener("input", render);
+render();
+document.getElementById("count").textContent = GAMES.length + " games";
+document.getElementById("count2").textContent = GAMES.length;
+document.getElementById("random").addEventListener("click", () => { location.href = GAMES[Math.floor(Math.random() * GAMES.length)].href; });
+
+const menu = document.getElementById("menu"), links = document.getElementById("links");
+menu.addEventListener("click", () => { const o = links.classList.toggle("open"); menu.setAttribute("aria-expanded", o); });
+links.addEventListener("click", e => { if(e.target.closest("a")){links.classList.remove("open");menu.setAttribute("aria-expanded","false");} });
+
+document.getElementById("theme").addEventListener("click", () => {
+  const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme = dark ? "light" : "dark";
+});
+
+/* Copy-to-clipboard for contact rows */
+document.querySelectorAll(".copy-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const text = btn.dataset.copy;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for older browsers / non-secure contexts
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      const original = btn.textContent;
+      btn.classList.add("copied");
+      btn.textContent = "✓ Copied";
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.textContent = original;
+      }, 1500);
+    } catch (err) {
+      // Last-resort feedback if copying fails
+      btn.textContent = "Copy failed";
+      setTimeout(() => { btn.textContent = "📋 Copy"; }, 1500);
+    }
+  });
+});
+</script>
+</body>
+</html>
