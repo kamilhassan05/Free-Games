@@ -35,6 +35,10 @@
     h1 span { background: linear-gradient(135deg, var(--accent-hi), #818cf8);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .hero-sub { color: var(--muted); font-size: 15px; max-width: 480px; margin: 0 auto 32px; }
+    .hero-links { margin: -14px 0 32px; }
+    .hero-links a { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--accent-hi);
+      text-decoration: none; border: 1px solid var(--border-hi); padding: 9px 18px; border-radius: 999px; background: var(--surface); }
+    .hero-links a:hover { border-color: var(--accent); }
     .flash-card { background: var(--surface); border: 1px solid var(--border-hi); border-radius: var(--radius);
       padding: 32px; margin-bottom: 28px; text-align: center; }
     .flash-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
@@ -129,6 +133,7 @@
       <div class="chip-tag">Tested: ESP32-WROOM-32U (4 MB)</div>
       <h1>Flash <span>Free Games</span><br>from Your Browser</h1>
       <p class="hero-sub">Turn an ESP32 into a pocket arcade. Flash it from your browser, then play 21 games over its own Wi-Fi, with no internet needed.</p>
+      <p class="hero-links"><a href="play/">▶ Play the games online (no ESP needed)</a></p>
     </div>
 
     <div class="flash-card">
