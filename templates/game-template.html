@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Game · Free Games</title>
+<style>
+/* Free Games look. Works offline: only system fonts, nothing is loaded from the internet. */
+:root{
+  --bg:#f2f4ff;--surface:#fff;--ink:#1a1b3a;--muted:#5b5f85;--line:#dde1f7;--blue:#3b4bff;--yellow:#ffc93c;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#14152e;--surface:#1d1f40;--ink:#eef0ff;--muted:#a2a6d0;--line:#2d3060;--blue:#6f7bff;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.5 var(--body);padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:1rem}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+header,.stats,.stage,.credit{width:min(100%,440px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.back{padding:.5rem 1rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;background:var(--surface);box-shadow:inset 0 0 0 2px var(--line)}
+h1{font-size:1.5rem;margin:0;letter-spacing:-.02em}
+.mute{width:42px;height:42px;border-radius:50%;border:0;cursor:pointer;font-size:1.2rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.stats{display:flex;justify-content:space-between;font-weight:700}
+.stats span{background:var(--surface);padding:.35rem .9rem;border-radius:999px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{position:relative;aspect-ratio:2/3;max-height:62dvh;border-radius:24px;overflow:hidden;background:#1d1f40;box-shadow:0 0 0 3px var(--line);touch-action:manipulation}
+/* ===== YOUR GAME GOES IN THE STAGE ===== */
+#target{position:absolute;width:64px;height:64px;border-radius:50%;background:var(--yellow);border:0;cursor:pointer;box-shadow:0 0 0 6px rgba(255,201,60,.3)}
+/* ======================================= */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;text-align:center;padding:1.5rem;background:rgba(20,21,46,.92);color:#eef0ff}
+.overlay[hidden]{display:none}
+.overlay h2{font-size:2rem;margin:0}.overlay p{margin:0;color:#c3c7ee;max-width:30ch}
+.btn{border:0;border-radius:999px;padding:.8rem 2rem;font:700 1.05rem var(--body);background:var(--yellow);color:#1a1b3a;cursor:pointer}
+.btn.ghost{background:transparent;color:#eef0ff;box-shadow:inset 0 0 0 2px #5b5f85}
+.picks{display:flex;flex-direction:column;gap:.6rem;width:min(100%,240px)}
+.picks .btn{width:100%}
+.credit{text-align:center;color:var(--muted);font-size:.9rem}
+.credit a{color:var(--blue)}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../index.html">&larr; All games</a>
+  <h1 id="title">My Game</h1>
+  <button class="mute" id="mute" aria-label="Mute sound" aria-pressed="false">🔊</button>
+</header>
+<div class="stats" aria-live="polite">
+  <span>Score <b id="score">0</b></span>
+  <span>Best <b id="best">0</b></span>
+  <span>Time <b id="time">20</b></span>
+</div>
+<div class="stage" id="stage">
+  <button id="target" aria-label="Tap the dot" hidden></button>
+  <div class="overlay" id="menu">
+    <h2 id="menuTitle">My Game</h2>
+    <p>Tap the dot as many times as you can before time runs out.</p>
+    <div class="picks">
+      <button class="btn pick" data-l="easy">Easy</button>
+      <button class="btn pick" data-l="medium">Medium</button>
+      <button class="btn pick" data-l="hard">Hard</button>
+    </div>
+  </div>
+  <div class="overlay" id="msg" hidden>
+    <h2>Time&rsquo;s up!</h2>
+    <p id="mtext"></p>
+    <button class="btn" id="again">Play again</button>
+    <button class="btn ghost" id="levels">Change level</button>
+  </div>
+</div>
+<p class="credit" id="credit"></p>
+
+<script>
+/* ============ 1. EDIT THIS ============ */
+const AUTHOR = { name: "Your Name", link: "" };   // link is optional, e.g. "https://instagram.com/you"
+const TITLE = "My Game";
+const KEY = "mygame";                              // unique name for saved scores (letters only)
+/* ======================================= */
+
+const $ = id => document.getElementById(id);
+document.title = TITLE + " · Free Games"; $("title").textContent = TITLE; $("menuTitle").textContent = TITLE;
+$("credit").innerHTML = "Made by " + (AUTHOR.link ? '<a href="' + AUTHOR.link + '" target="_blank" rel="noopener">' + AUTHOR.name + "</a>" : "<b>" + AUTHOR.name + "</b>") + ". Hosted on Free Games by <b>Kamil Hassan</b>.";
+
+/* Easy / Medium / Hard settings: put your own values here */
+const LEVELS = { easy: { time: 25, size: 72 }, medium: { time: 20, size: 56 }, hard: { time: 15, size: 42 } };
+let level = "medium", score = 0, best = 0, left = 20, timer = null, playing = false;
+
+/* Sound: made in the browser, no audio files needed */
+let actx = null, muted = false;
+try { muted = localStorage.getItem(KEY + "-muted") === "1"; } catch (e) {}
+function tone(f, d, type = "square", v = .06){
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) {}
+}
+function paintMute(){ $("mute").textContent = muted ? "🔇" : "🔊"; $("mute").setAttribute("aria-pressed", muted); }
+$("mute").addEventListener("click", () => { muted = !muted; paintMute(); try { localStorage.setItem(KEY + "-muted", muted ? "1" : "0"); } catch (e) {} });
+paintMute();
+
+/* Saved best score (always wrap storage in try/catch) */
+function loadBest(){ try { best = +localStorage.getItem(KEY + "-best-" + level) || 0; } catch (e) { best = 0; } $("best").textContent = best; }
+
+/* ============ 2. YOUR GAME LOGIC ============ */
+function moveTarget(){
+  const st = $("stage"), t = $("target"), s = LEVELS[level].size;
+  t.style.width = t.style.height = s + "px";
+  t.style.left = Math.random() * (st.clientWidth - s) + "px"; t.style.top = Math.random() * (st.clientHeight - s) + "px";
+}
+function start(l){
+  level = l; score = 0; left = LEVELS[l].time; playing = true; loadBest();
+  $("score").textContent = 0; $("time").textContent = left; $("menu").hidden = true; $("msg").hidden = true; $("target").hidden = false; moveTarget();
+  tone(523, .1); clearInterval(timer);
+  timer = setInterval(() => { left--; $("time").textContent = left; if (left <= 0) end(); }, 1000);
+}
+function end(){
+  playing = false; clearInterval(timer); $("target").hidden = true;
+  const isBest = score > best; if (isBest){ best = score; $("best").textContent = best; try { localStorage.setItem(KEY + "-best-" + level, best); } catch (e) {} }
+  $("mtext").textContent = "You scored " + score + "." + (isBest && score > 0 ? " New best!" : " Best: " + best + ".");
+  $("msg").hidden = false; tone(262, .3, "triangle");
+}
+$("target").addEventListener("pointerdown", e => { e.preventDefault(); if (!playing) return; score++; $("score").textContent = score; tone(660 + (score % 8) * 50, .08); moveTarget(); });
+/* ============================================= */
+
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => start(b.dataset.l)));
+$("again").addEventListener("click", () => start(level));
+$("levels").addEventListener("click", () => { $("msg").hidden = true; $("menu").hidden = false; });
+document.addEventListener("visibilitychange", () => { if (document.hidden && playing) { clearInterval(timer); end(); } });
+</script>
+</body>
+</html>
