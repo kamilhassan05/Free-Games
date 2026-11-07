@@ -65,6 +65,12 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   .nav-actions .btn{display:none}
 }
 
+.live{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .85rem;border-radius:999px;background:var(--surface);box-shadow:inset 0 0 0 2px var(--line);font:700 .9rem var(--body);white-space:nowrap}
+.live[hidden]{display:none}
+.live::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(37,184,150,.25)}
+.logo{white-space:nowrap}
+@media (max-width:480px){.live{padding:.4rem .6rem;font-size:.82rem;gap:.3rem}.logo{font-size:1.15rem;gap:.45rem}.logo-mark{width:28px;height:28px}.nav-actions{gap:.35rem}.nav .wrap{gap:.5rem}.icon-btn{width:38px;height:38px}}
+
 /* Hero */
 .hero{padding:clamp(2.5rem,7vw,6rem) 0 clamp(2rem,5vw,4rem)}
 .hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(2rem,5vw,4rem);align-items:center}
@@ -154,6 +160,7 @@ footer a:hover{color:var(--ink)}
       </ul>
     </nav>
     <div class="nav-actions">
+      <span class="live" id="liveBadge" title="Players connected" hidden><b id="liveN">0</b>/<b id="liveMax">8</b> <span aria-hidden="true">&#128101;</span></span>
       <a class="btn" href="#games">Play now</a>
       <button class="icon-btn" id="theme" aria-label="Switch theme">◐</button>
       <button class="icon-btn menu-btn" id="menu" aria-label="Open menu" aria-expanded="false" aria-controls="links">☰</button>
@@ -344,6 +351,15 @@ document.querySelectorAll(".copy-btn").forEach(btn => {
     }
   });
 });
+
+async function liveUsers(){
+  const el = document.getElementById("liveBadge");
+  try {
+    const r = await fetch("/api/status", { cache: "no-store" }); const j = await r.json();
+    document.getElementById("liveN").textContent = j.clients; document.getElementById("liveMax").textContent = j.max; el.hidden = false;
+  } catch (e) { el.hidden = true; }
+}
+liveUsers(); setInterval(liveUsers, 5000);
 </script>
 </body>
 </html>
