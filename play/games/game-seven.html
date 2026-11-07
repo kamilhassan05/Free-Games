@@ -47,6 +47,10 @@ h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
 .names-in::placeholder{color:#8f94c4}
 .names-in:focus{outline:3px solid #6f7bff;outline-offset:2px}
 #l1,#l3{display:inline-block;max-width:6.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.lp{display:flex;flex-direction:column;align-items:center;gap:.6rem;width:100%}.lp[hidden]{display:none}
+.code{font:800 2.6rem var(--display);letter-spacing:.12em;background:#262a58;padding:.3rem 1.2rem;border-radius:16px;color:#ffc93c}
+.code-in{text-transform:uppercase;letter-spacing:.3em;font-weight:800}
+.lanerr{color:#ff9a9a;min-height:1.4em;margin:0}
 .controls{display:flex;gap:.5rem}
 .soft{flex:1;border:0;cursor:pointer;padding:.65rem;border-radius:999px;background:var(--surface);color:var(--ink);font:500 .95rem var(--body);box-shadow:inset 0 0 0 2px var(--line)}
 @media (prefers-reduced-motion:reduce){.cell svg path,.cell svg circle{animation:none}}
@@ -74,6 +78,7 @@ h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
       <button class="btn pick" data-l="medium">Medium<small>It blocks and takes wins</small></button>
       <button class="btn pick" data-l="hard">Hard<small>Unbeatable computer</small></button>
       <button class="btn pick ghost" data-l="two">2 Players<small>Take turns on one screen</small></button>
+      <button class="btn ghost" id="lanBtn" hidden>Play with a friend<small>Two phones, same Wi-Fi</small></button>
     </div>
   </div>
   <div class="overlay" id="names" hidden>
@@ -84,6 +89,20 @@ h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
     <button class="btn" id="go">Start</button>
     <button class="btn ghost" id="defNames">Just use X and O</button>
     <button class="btn ghost" id="nameBack">Back</button>
+  </div>
+  <div class="overlay" id="lan" hidden>
+    <div class="lp" id="lpName"><h2>Your name</h2><p>It&rsquo;s shown on the board while you play.</p>
+      <input class="names-in" id="lanNameIn" maxlength="12" autocomplete="off" placeholder="Your name" aria-label="Your name">
+      <button class="btn" id="lanNameGo">Continue</button><button class="btn ghost" id="lanNameBack">Back</button></div>
+    <div class="lp" id="lpChoose" hidden><h2>Play with a friend</h2><p id="lanHello"></p>
+      <button class="btn" id="lanCreate">Create a game</button><button class="btn ghost" id="lanJoinBtn">Join with a code</button><button class="btn ghost" id="lanChooseBack">Back</button></div>
+    <div class="lp" id="lpJoin" hidden><h2>Enter the code</h2><p>Ask your friend for their 4-letter code.</p>
+      <input class="names-in code-in" id="lanCode" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="CODE" aria-label="Game code">
+      <button class="btn" id="lanJoinGo">Join</button><button class="btn ghost" id="lanJoinBack">Back</button></div>
+    <div class="lp" id="lpWait" hidden><h2>Your game code</h2><div class="code" id="lanToken"></div>
+      <p>Your friend opens this game on the same Wi-Fi, taps <b>Play with a friend</b> and enters this code.</p>
+      <p id="lanWaitMsg">Waiting for your friend&hellip;</p><button class="btn ghost" id="lanWaitCancel">Cancel</button></div>
+    <p class="lanerr" id="lanErr" role="alert"></p>
   </div>
   <div class="overlay" id="msg" hidden>
     <h2 id="mtitle"></h2>
@@ -220,8 +239,8 @@ function submitNames(useDefault){
   names = useDefault ? { X: "X", O: "O" } : { X: $("n1").value.trim() || "Player 1", O: $("n2").value.trim() || "Player 2" };
   stats = { w: 0, d: 0, l: 0 }; saveStats(); begin();
 }
-function showMenu(){ state = "menu"; $("msg").hidden = true; $("menu").hidden = false; board = Array(9).fill(null); render(); setStatus(); }
-function humanMove(i){ if (state !== "play" || board[i] || (isAI() && turn === "O")) return; ac(); place(i); }
+function showMenu(){ if (mode === "lan") lanLeave(); state = "menu"; $("msg").hidden = true; $("menu").hidden = false; board = Array(9).fill(null); render(); setStatus(); }
+function humanMove(i){ if (mode === "lan"){ lanMove(i); return; } if (state !== "play" || board[i] || (isAI() && turn === "O")) return; ac(); place(i); }
 function aiTurn(){ setTimeout(() => { if (state === "play" && turn === "O") place(aiChoose()); }, 500); }
 function place(i){
   board[i] = turn; (turn === "X" ? sfx.x : sfx.o)();
@@ -251,13 +270,132 @@ $("go").addEventListener("click", () => submitNames(false));
 $("defNames").addEventListener("click", () => submitNames(true));
 ["n1", "n2"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") submitNames(false); }));
 $("nameBack").addEventListener("click", () => { $("names").hidden = true; $("menu").hidden = false; });
-$("mainBtn").addEventListener("click", newRound);
+$("mainBtn").addEventListener("click", () => { if (lanMainAct){ const f = lanMainAct; lanMainAct = null; f(); } else newRound(); });
 $("altBtn").addEventListener("click", showMenu);
 $("restart").addEventListener("click", () => {
   if (state === "menu") return;
   if (mode === "two"){ names = null; starter = "X"; askNames(); } else newRound();
 });
 $("change").addEventListener("click", showMenu);
+
+/* ---------- Play with a friend: two phones on the same Wi-Fi ---------- */
+let lan = null, lanTimer = null, lanFails = 0, lanBusy = false, lanMainAct = null;
+const lanPanels = ["lpName", "lpChoose", "lpJoin", "lpWait"];
+function lanShow(id){ $("menu").hidden = true; $("lan").hidden = false; lanPanels.forEach(p => $(p).hidden = p !== id); $("lanErr").textContent = ""; }
+const lanName = () => { try { return sessionStorage.getItem("ttt-lan-name") || ""; } catch(e) { return window.__tttName || ""; } };
+function lanSetName(n){ try { sessionStorage.setItem("ttt-lan-name", n); } catch(e) { window.__tttName = n; } }
+async function lanApi(path, params){
+  const q = new URLSearchParams(params || {}).toString(), ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
+  try { const r = await fetch("/api/ttt/" + path + (q ? "?" + q : ""), { cache: "no-store", signal: ctl.signal }); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+(async () => { try { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 1500); const r = await fetch("/api/ping", { cache: "no-store", signal: ctl.signal }); clearTimeout(t); const j = await r.json(); if (j && j.ttt) $("lanBtn").hidden = false; } catch(e) {} })();
+
+function lanChoose(){ $("lanHello").textContent = "Playing as " + lanName(); lanShow("lpChoose"); }
+function lanSaveName(){ const n = $("lanNameIn").value.trim(); if (!n){ $("lanErr").textContent = "Please type your name."; return; } lanSetName(n.slice(0, 12)); lanChoose(); }
+function lanBackToMenu(){ $("lan").hidden = true; $("menu").hidden = false; }
+$("lanBtn").addEventListener("click", () => { ac(); if (lanName()) lanChoose(); else { lanShow("lpName"); $("lanNameIn").value = ""; $("lanNameIn").focus(); } });
+$("lanNameGo").addEventListener("click", lanSaveName);
+$("lanNameIn").addEventListener("keydown", e => { if (e.key === "Enter") lanSaveName(); });
+$("lanNameBack").addEventListener("click", lanBackToMenu);
+$("lanChooseBack").addEventListener("click", lanBackToMenu);
+$("lanCreate").addEventListener("click", async () => {
+  try {
+    const r = await lanApi("create", { name: lanName() });
+    if (r.err){ $("lanErr").textContent = r.err; return; }
+    lan = { token: r.token, pid: r.pid, you: r.you, ver: -1, started: false, prev: null, leftShown: false };
+    $("lanToken").textContent = r.token.split("").join(" "); lanShow("lpWait"); lanStartPolling();
+  } catch(e) { $("lanErr").textContent = "Couldn’t reach the board. Check your Wi-Fi."; }
+});
+$("lanJoinBtn").addEventListener("click", () => { lanShow("lpJoin"); $("lanCode").value = ""; $("lanCode").focus(); });
+$("lanJoinBack").addEventListener("click", lanChoose);
+$("lanJoinGo").addEventListener("click", lanJoin);
+$("lanCode").addEventListener("keydown", e => { if (e.key === "Enter") lanJoin(); });
+async function lanJoin(){
+  const code = $("lanCode").value.trim().toUpperCase();
+  if (code.length !== 4){ $("lanErr").textContent = "Enter the 4-letter code."; return; }
+  try {
+    const r = await lanApi("join", { token: code, name: lanName() });
+    if (r.err){ $("lanErr").textContent = r.err; return; }
+    lan = { token: code, pid: r.pid, you: r.you, ver: -1, started: false, prev: null, leftShown: false };
+    lanStartPolling();
+  } catch(e) { $("lanErr").textContent = "Couldn’t reach the board. Check your Wi-Fi."; }
+}
+$("lanWaitCancel").addEventListener("click", () => { lanLeave(); lanBackToMenu(); });
+
+function lanStartPolling(){ clearInterval(lanTimer); lanFails = 0; lanBusy = false; lanTick(); lanTimer = setInterval(lanTick, 600); }
+async function lanTick(){
+  if (!lan || lanBusy) return; lanBusy = true; const me = lan;
+  try {
+    const st = await lanApi("state", { token: me.token, pid: me.pid }); lanFails = 0;
+    if (lan !== me) return;
+    if (st.err){ lanGone("Your friend closed the game."); return; }
+    lanApply(st);
+  } catch(e) { lanFails++; if (lanFails === 3 && mode === "lan") $("status").textContent = "Connection lost. Check your Wi-Fi…"; }
+  finally { lanBusy = false; }
+}
+function lanMsg(title, text, main, act){
+  $("mtitle").textContent = title; $("mtext").textContent = text; $("mainBtn").textContent = main; $("altBtn").textContent = "Leave game";
+  lanMainAct = act; $("msg").hidden = false; $("mainBtn").focus();
+}
+function enterLanGame(){
+  mode = "lan"; state = "lan"; $("lan").hidden = true; $("menu").hidden = true; $("msg").hidden = true;
+  $("restart").style.display = "none"; $("change").textContent = "Leave game"; $("altBtn").textContent = "Leave game"; sfx.start();
+}
+function lanApply(st){
+  if (!lan.started){ if (st.st === "wait") return; lan.started = true; enterLanGame(); }
+  const me = st.you, mine = me === "X" ? st.nx : st.no, theirs = me === "X" ? st.no : st.nx;
+  if (st.st === "wait"){
+    if (!lan.leftShown){ lan.leftShown = true; $("status").textContent = "Waiting for a friend…"; lanMsg("Your friend left", "Share the code " + lan.token + " to play again, or leave the game.", "Keep waiting", () => { $("msg").hidden = true; }); }
+    return;
+  }
+  if (lan.leftShown){ lan.leftShown = false; lanMainAct = null; $("msg").hidden = true; lan.ver = -1; lan.prev = null; }
+  $("l1").textContent = mine; $("s1").textContent = me === "X" ? st.sx : st.so; $("s2").textContent = st.d;
+  $("l3").textContent = theirs; $("s3").textContent = me === "X" ? st.so : st.sx;
+  if (st.v === lan.ver) return;
+  const prev = lan.prev; lan.ver = st.v; lan.prev = st;
+  board = st.b.split("").map(c => c === "-" ? null : c); turn = st.t;
+  cells.forEach((c, i) => {
+    const m = board[i];
+    if ((c.dataset.m || "") !== (m || "")){ c.innerHTML = m === "X" ? X_SVG : m === "O" ? O_SVG : ""; c.dataset.m = m || ""; }
+    c.classList.remove("win");
+    c.disabled = !!m || st.st !== "play" || st.t !== me;
+    c.setAttribute("aria-label", "Row " + (Math.floor(i / 3) + 1) + ", column " + (i % 3 + 1) + ", " + (m ? m : "empty"));
+  });
+  if (st.w && st.w !== "D") st.l.forEach(i => cells[i].classList.add("win"));
+  $("status").textContent = st.w ? "" : (st.t === me ? "Your turn" : theirs + "’s turn");
+  if (prev && prev.b !== st.b){ const k = st.b.split("").findIndex((c, i) => c !== prev.b[i] && c !== "-"); if (k >= 0) (st.b[k] === "X" ? sfx.x : sfx.o)(); }
+  if (st.w && !(prev && prev.w)){
+    setTimeout(() => (st.w === "D" ? sfx.draw : st.w === me ? sfx.win : sfx.lose)(), 250);
+    setTimeout(() => {
+      if (!lan || lan.ver !== st.v) return;
+      lanMsg(st.w === "D" ? "It’s a draw" : st.w === me ? "You win!" : theirs + " wins!", "Press the button when you’re both ready.", "Next round", lanRematch);
+    }, st.w === "D" ? 700 : 1100);
+  } else if (!st.w && prev && prev.w){ lanMainAct = null; $("msg").hidden = true; }
+}
+async function lanMove(i){
+  if (!lan || mode !== "lan") return; ac();
+  try { await lanApi("move", { token: lan.token, pid: lan.pid, cell: i }); } catch(e) {}
+  setTimeout(lanTick, 40);
+}
+async function lanRematch(){
+  if (!lan) return; $("msg").hidden = true;
+  try { await lanApi("rematch", { token: lan.token, pid: lan.pid }); } catch(e) {}
+  setTimeout(lanTick, 40);
+}
+function lanGone(text){
+  clearInterval(lanTimer); lanTimer = null; lan = null;
+  if (mode === "lan") { state = "lan"; cells.forEach(c => c.disabled = true); }
+  lanMsg("Game ended", text, "Back to menu", () => showMenu());
+}
+function lanLeave(){
+  clearInterval(lanTimer); lanTimer = null;
+  if (lan) lanApi("leave", { token: lan.token, pid: lan.pid }).catch(() => {});
+  lan = null; lanMainAct = null;
+  if (mode === "lan"){ mode = "medium"; $("restart").style.display = ""; $("change").textContent = "Change level"; $("altBtn").textContent = "Change level"; $("mainBtn").textContent = "Next round"; loadStats(); hud(); }
+  $("lan").hidden = true;
+}
+
 initCells(); board = Array(9).fill(null); loadStats(); hud(); render();
 </script>
 </body>
