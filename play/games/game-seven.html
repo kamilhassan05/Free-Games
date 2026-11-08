@@ -55,7 +55,6 @@ h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
 .soft{flex:1;border:0;cursor:pointer;padding:.65rem;border-radius:999px;background:var(--surface);color:var(--ink);font:500 .95rem var(--body);box-shadow:inset 0 0 0 2px var(--line)}
 @media (prefers-reduced-motion:reduce){.cell svg path,.cell svg circle{animation:none}}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 <header>
@@ -79,7 +78,7 @@ h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
       <button class="btn pick" data-l="medium">Medium<small>It blocks and takes wins</small></button>
       <button class="btn pick" data-l="hard">Hard<small>Unbeatable computer</small></button>
       <button class="btn pick ghost" data-l="two">2 Players<small>Take turns on one screen</small></button>
-      <button class="btn ghost" id="lanBtn" hidden>Play with a friend<small>Share a code</small></button>
+      <button class="btn ghost" id="lanBtn" hidden>Play with a friend<small>Two phones, same Wi-Fi</small></button>
     </div>
   </div>
   <div class="overlay" id="names" hidden>
@@ -101,7 +100,7 @@ h1{font:800 1.5rem var(--display);margin:0;letter-spacing:-.02em}
       <input class="names-in code-in" id="lanCode" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="CODE" aria-label="Game code">
       <button class="btn" id="lanJoinGo">Join</button><button class="btn ghost" id="lanJoinBack">Back</button></div>
     <div class="lp" id="lpWait" hidden><h2>Your game code</h2><div class="code" id="lanToken"></div>
-      <p>Your friend opens this game, taps <b>Play with a friend</b> and enters this code.</p>
+      <p>Your friend opens this game on the same Wi-Fi, taps <b>Play with a friend</b> and enters this code.</p>
       <p id="lanWaitMsg">Waiting for your friend&hellip;</p><button class="btn ghost" id="lanWaitCancel">Cancel</button></div>
     <p class="lanerr" id="lanErr" role="alert"></p>
   </div>
@@ -279,100 +278,18 @@ $("restart").addEventListener("click", () => {
 });
 $("change").addEventListener("click", showMenu);
 
-/* ---------- Play with a friend ---------- */
+/* ---------- Play with a friend: two phones on the same Wi-Fi ---------- */
 let lan = null, lanTimer = null, lanFails = 0, lanBusy = false, lanMainAct = null;
 const lanPanels = ["lpName", "lpChoose", "lpJoin", "lpWait"];
 function lanShow(id){ $("menu").hidden = true; $("lan").hidden = false; lanPanels.forEach(p => $(p).hidden = p !== id); $("lanErr").textContent = ""; }
 const lanName = () => { try { return sessionStorage.getItem("ttt-lan-name") || ""; } catch(e) { return window.__tttName || ""; } };
 function lanSetName(n){ try { sessionStorage.setItem("ttt-lan-name", n); } catch(e) { window.__tttName = n; } }
-/* Peer-to-peer: the creator's browser keeps the game, the friend's browser talks to it. No account needed. */
-const PEER_OPTS = window.FG_PEER_OPTS || {};
-const rid = (n, a) => Array.from({ length: n }, () => a[Math.floor(Math.random() * a.length)]).join("");
-const cleanNm = x => (x || "").trim().replace(/["\\<>]/g, "").slice(0, 24) || "Player";
-let peer = null, conn = null, hostRoom = null, hostConn = null, pending = {}, reqN = 0;
-function rNew(r){ r.b = Array(9).fill("-"); r.t = r.starter; r.w = ""; r.l = [-1, -1, -1]; r.v++; }
-function rCheck(r){
-  for (const L of LINES){ const a = r.b[L[0]]; if (a !== "-" && a === r.b[L[1]] && a === r.b[L[2]]){ r.w = a; r.l = L; a === "X" ? r.sx++ : r.so++; return; } }
-  if (!r.b.includes("-")){ r.w = "D"; r.d++; }
+async function lanApi(path, params){
+  const q = new URLSearchParams(params || {}).toString(), ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
+  try { const r = await fetch("/api/ttt/" + path + (q ? "?" + q : ""), { cache: "no-store", signal: ctl.signal }); return await r.json(); }
+  finally { clearTimeout(t); }
 }
-function rState(r, role){ return { v: r.v, nx: r.nx, no: r.hasO ? r.no : "", b: r.b.join(""), t: r.t, w: r.w, l: r.l, sx: r.sx, so: r.so, d: r.d, you: role, opp: r.hasO ? 1 : 0, st: !r.hasO ? "wait" : (r.w ? "over" : "play") }; }
-function hostApi(path, q){
-  const r = hostRoom; if (!r) return { err: "gone" };
-  if (path === "join"){
-    if (r.hasO) return { err: "That game is already full." };
-    r.pidO = rid(8, "abcdefghijklmnopqrstuvwxyz0123456789"); r.no = cleanNm(q.name); r.hasO = true; r.sx = r.so = r.d = 0; r.starter = "X"; rNew(r);
-    return { pid: r.pidO, you: "O" };
-  }
-  const role = q.pid === r.pidX ? "X" : (r.hasO && q.pid === r.pidO ? "O" : null); if (!role) return { err: "gone" };
-  if (path === "state") return rState(r, role);
-  if (path === "move"){
-    const c = parseInt(q.cell, 10);
-    if (!r.hasO || r.w || r.t !== role || !(c >= 0 && c <= 8) || r.b[c] !== "-") return { err: "Move not allowed" };
-    r.b[c] = role; r.t = role === "X" ? "O" : "X"; rCheck(r); r.v++; return { ok: 1 };
-  }
-  if (path === "rematch"){ if (r.w && r.hasO){ r.starter = r.starter === "X" ? "O" : "X"; rNew(r); } return { ok: 1 }; }
-  if (path === "leave"){ if (role === "X") hostRoom = null; else { r.hasO = false; r.no = ""; r.v++; } return { ok: 1 }; }
-  return { err: "bad request" };
-}
-function peerClose(){ try { if (conn) conn.close(); } catch(e) {} try { if (peer) peer.destroy(); } catch(e) {} peer = null; conn = null; hostConn = null; }
-function hostCreate(p){
-  return new Promise(resolve => {
-    let tries = 0, done = false;
-    const finish = v => { if (!done){ done = true; resolve(v); } };
-    const attempt = () => {
-      const code = rid(4, "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"), pr = new Peer("fgttt-" + code, PEER_OPTS);
-      pr.on("open", () => {
-        peer = pr; hostRoom = { token: code, pidX: rid(8, "abcdefghijklmnopqrstuvwxyz0123456789"), nx: cleanNm(p.name), no: "", hasO: false, sx: 0, so: 0, d: 0, starter: "X", v: 0 }; rNew(hostRoom);
-        finish({ token: code, pid: hostRoom.pidX, you: "X" });
-      });
-      pr.on("connection", c => {
-        c.on("data", m => { const res = hostApi(m.path, m.params || {}); if (m.path === "join" && res.pid) hostConn = c; try { c.send({ id: m.id, res }); } catch(e) {} });
-        c.on("close", () => { if (hostConn === c && hostRoom){ hostRoom.hasO = false; hostRoom.no = ""; hostRoom.v++; hostConn = null; } });
-      });
-      pr.on("error", e => { if (e.type === "unavailable-id" && ++tries < 5){ try { pr.destroy(); } catch(x) {} attempt(); } else finish({ err: "Couldn’t start a game. Check your internet." }); });
-    };
-    attempt(); setTimeout(() => finish({ err: "Couldn’t start a game. Check your internet." }), 9000);
-  });
-}
-function guestRequest(path, params){
-  return new Promise((resolve, reject) => {
-    if (!conn || !conn.open){ resolve({ err: "gone" }); return; }
-    const id = ++reqN; pending[id] = resolve; conn.send({ id, path, params });
-    setTimeout(() => { if (pending[id]){ delete pending[id]; reject(new Error("timeout")); } }, 4000);
-  });
-}
-function guestJoin(p){
-  return new Promise(resolve => {
-    const code = (p.token || "").toUpperCase(); let done = false, cn = null;
-    const pr = new Peer(PEER_OPTS);                       // this attempt's own connection
-    const fail = msg => { if (done) return; done = true; try { pr.destroy(); } catch(e) {} if (peer === pr){ peer = null; conn = null; } resolve({ err: msg }); };
-    pr.on("open", () => {
-      cn = pr.connect("fgttt-" + code, { reliable: true });
-      cn.on("open", () => {
-        conn = cn; peer = pr;
-        guestRequest("join", { name: p.name }).then(res => { if (res.err) fail(res.err); else if (!done){ done = true; resolve(res); } }).catch(() => fail("Couldn’t connect. Check your internet."));
-      });
-      cn.on("data", m => { if (pending[m.id]){ const f = pending[m.id]; delete pending[m.id]; f(m.res); } });
-      cn.on("close", () => { if (conn === cn) conn = null; });
-      cn.on("error", () => fail("Code not found. Check it and try again."));
-    });
-    pr.on("error", e => fail(e.type === "peer-unavailable" ? "Code not found. Check it and try again." : "Couldn’t connect. Check your internet."));
-    setTimeout(() => fail(cn ? "Couldn’t connect. Check your internet." : "Couldn’t connect. Check your internet."), 9000);
-  });
-}
-function lanApi(path, params){
-  params = params || {};
-  if (path === "create") return hostCreate(params);
-  if (path === "join") return guestJoin(params);
-  if (hostRoom){
-    const res = hostApi(path, params);
-    if (path === "leave" && !hostRoom){ peerClose(); }
-    return Promise.resolve(res);
-  }
-  if (path === "leave"){ const p = guestRequest("leave", params).catch(() => {}); return p.then(() => { peerClose(); return { ok: 1 }; }); }
-  return guestRequest(path, params);
-}
-if (window.Peer) $("lanBtn").hidden = false;
+(async () => { try { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 1500); const r = await fetch("/api/ping", { cache: "no-store", signal: ctl.signal }); clearTimeout(t); const j = await r.json(); if (j && j.ttt) $("lanBtn").hidden = false; } catch(e) {} })();
 
 function lanChoose(){ $("lanHello").textContent = "Playing as " + lanName(); lanShow("lpChoose"); }
 function lanSaveName(){ const n = $("lanNameIn").value.trim(); if (!n){ $("lanErr").textContent = "Please type your name."; return; } lanSetName(n.slice(0, 12)); lanChoose(); }
@@ -388,7 +305,7 @@ $("lanCreate").addEventListener("click", async () => {
     if (r.err){ $("lanErr").textContent = r.err; return; }
     lan = { token: r.token, pid: r.pid, you: r.you, ver: -1, started: false, prev: null, leftShown: false };
     $("lanToken").textContent = r.token.split("").join(" "); lanShow("lpWait"); lanStartPolling();
-  } catch(e) { $("lanErr").textContent = "Couldn’t connect. Check your internet."; }
+  } catch(e) { $("lanErr").textContent = "Couldn’t reach the board. Check your Wi-Fi."; }
 });
 $("lanJoinBtn").addEventListener("click", () => { lanShow("lpJoin"); $("lanCode").value = ""; $("lanCode").focus(); });
 $("lanJoinBack").addEventListener("click", lanChoose);
@@ -397,15 +314,12 @@ $("lanCode").addEventListener("keydown", e => { if (e.key === "Enter") lanJoin()
 async function lanJoin(){
   const code = $("lanCode").value.trim().toUpperCase();
   if (code.length !== 4){ $("lanErr").textContent = "Enter the 4-letter code."; return; }
-  $("lanErr").textContent = "Connecting…"; $("lanJoinGo").disabled = true;
   try {
     const r = await lanApi("join", { token: code, name: lanName() });
-    $("lanJoinGo").disabled = false;
     if (r.err){ $("lanErr").textContent = r.err; return; }
-    $("lanErr").textContent = "";
     lan = { token: code, pid: r.pid, you: r.you, ver: -1, started: false, prev: null, leftShown: false };
     lanStartPolling();
-  } catch(e) { $("lanJoinGo").disabled = false; $("lanErr").textContent = "Couldn’t connect. Check your internet."; }
+  } catch(e) { $("lanErr").textContent = "Couldn’t reach the board. Check your Wi-Fi."; }
 }
 $("lanWaitCancel").addEventListener("click", () => { lanLeave(); lanBackToMenu(); });
 
@@ -417,7 +331,7 @@ async function lanTick(){
     if (lan !== me) return;
     if (st.err){ lanGone("Your friend closed the game."); return; }
     lanApply(st);
-  } catch(e) { lanFails++; if (lanFails === 3 && mode === "lan") $("status").textContent = "Connection lost. Check your internet…"; }
+  } catch(e) { lanFails++; if (lanFails === 3 && mode === "lan") $("status").textContent = "Connection lost. Check your Wi-Fi…"; }
   finally { lanBusy = false; }
 }
 function lanMsg(title, text, main, act){
