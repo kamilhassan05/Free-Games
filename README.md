@@ -1,142 +1,120 @@
-# Free Games — ESP32 Firmware Flasher
+<div align="center">
 
-A browser-based ESP32 flasher for the **Free Games** project — a website with 21 single-file HTML games served from SPIFFS on an ESP32. Flash it straight from Chrome or Edge. No Arduino IDE, no PlatformIO, no software to install.
+# 🎮 Free Games
 
-Live flasher for Esp: `https://kamilhassan05.github.io/Free-Games/`
+**A pocket arcade on a $5 microcontroller.**
+Play 21 games in your browser, or flash an ESP32 and play them anywhere, even with no internet.
 
-Play online without Esp: `https://kamilhassan05.github.io/Free-Games/play/`
+[![Play online](https://img.shields.io/badge/▶_Play_online-no_install-25b896?style=for-the-badge)](https://kamilhassan05.github.io/Free-Games/play/)
+[![Flash it](https://img.shields.io/badge/⚡_Flash_an_ESP32-Web_Flasher-3b82f6?style=for-the-badge)](https://kamilhassan05.github.io/Free-Games/)
+![Version](https://img.shields.io/badge/version-1.2-ffc93c?style=for-the-badge)
 
----
-
-## What's inside
-
-The `factory.bin` is a **single merged flash image**. It already contains:
-
-- bootloader
-- partition table
-- the Free Games firmware
-- the SPIFFS image with `index.html` + all 21 games
-
-So you do **not** need to build or merge anything. Just flash it.
+</div>
 
 ---
 
-## For beginners (just flash it)
+## 🧭 Pick your way to play
 
-1. Open the GitHub Pages URL of this repo in **desktop Chrome or Edge** (not Firefox, not Safari, not mobile).
-2. Plug your ESP32 into your computer with a **data** USB cable (not charge-only).
-3. If the board does not appear, hold **BOOT**, press **RESET** once, release **BOOT**.
-4. Select your board in the dropdown.
-5. Click **Flash Free Games Firmware**.
-6. Wait for it to finish, then press **RESET**.
-7. On your phone or PC, connect to the board's Wi-Fi AP and open `http://192.168.4.1`.
+| | Play online | Flash an ESP32 |
+|---|---|---|
+| What you need | Just a browser | An ESP32 board and a USB cable |
+| Internet needed? | Yes | **No**, it makes its own Wi-Fi |
+| Link | **[Open the games](https://kamilhassan05.github.io/Free-Games/play/)** | **[Open the flasher](https://kamilhassan05.github.io/Free-Games/)** |
 
-Only the **ESP32-WROOM-32U (4 MB)** is tested right now. Other boards are marked "coming soon" and are disabled until tested on real hardware.
+## ✨ What is this?
 
----
+The ESP32 creates its own open Wi-Fi network called **Free Games**. Connect with any phone or laptop and the games open automatically. If they don't, go to `http://192.168.4.1`. The games are stored on the board, so it works with no internet.
 
-## For developers (rebuilding `factory.bin`)
+- 🎯 **21 original games**: Arcade, Puzzle, Action, Racing, Strategy and Word
+- 🎚️ **Easy / Medium / Hard** in every game, with best scores saved on your device
+- 🔊 **Sound effects** made in the browser, with a mute button
+- 📱 **Phone-friendly** touch controls
+- ⚡ **One-click flashing** from the browser
 
-Only needed if you change the sketch or the games. Beginners can ignore this.
+## 🚀 Flash an ESP32
 
-1. Open `source/FreeGames/FreeGames.ino` in Arduino IDE.
-2. Set **Board: ESP32 Dev Module** and **Flash size: 4 MB**.
-3. Upload the sketch.
-4. Use **Tools → ESP32 Sketch Data Upload** to upload `source/FreeGames/data/` to SPIFFS.
-5. Dump the full flash to one file:
+1. Open the **[web flasher](https://kamilhassan05.github.io/Free-Games/)** in desktop **Chrome or Edge**.
+2. Plug in your board with a **data** USB cable and pick it in the dropdown.
+3. Click **Flash Free Games Firmware**.
+4. Press **RESET** when it finishes.
+5. Connect to the Wi-Fi **Free Games** (no password).
+
+> **Board not showing up?** Hold **BOOT**, press **RESET** once, release **BOOT**. For the S3 boards, hold **BOOT** while plugging in the USB cable.
+
+You can also download the `.bin` files from **[Releases](../../releases)**.
+
+## ✅ Supported boards
+
+| Board | Chip | Status |
+|---|---|---|
+| ESP32-WROOM-32U | ESP32 | ✅ Tested |
+| ESP32 DevKit V1 | ESP32 | ✅ Tested |
+| ESP32-S3 N16R8 | ESP32-S3 | ✅ Tested |
+| ESP32-S3 Zero / Super Mini | ESP32-S3 | ✅ Tested |
+| ESP32-C3 Super Mini | ESP32-C3 | ⏳ v1.3 |
+| ESP8266 / Wemos D1 Mini | ESP8266 | ⏳ v2.1 |
+
+## 🕹️ The games
+
+| Category | Games |
+|---|---|
+| Arcade | Coin Dodge, Brick Breaker, Whack-a-Mole, Stack Tower, Sky Flap, Snake, Ping Pong, Hop Across |
+| Puzzle | Memory Match, Merge Up, Pattern Pulse, Mine Sweeper, Slide Puzzle, Color Clash, Code Breaker |
+| Action | Star Blaster, Bolt Runner |
+| Racing | Road Rush |
+| Strategy | Tic Tac Toe (computer, 2 players or a friend), Connect Four |
+| Word | Hangman (with hints) |
+
+## 🛠️ Build it yourself
+
+1. Open `source/FreeGamesAP/FreeGamesAP.ino` in Arduino IDE (keep `RoomData.h` next to it).
+2. **ESP32:** board *ESP32 Dev Module*, 4 MB flash.
+   **ESP32-S3:** board *ESP32S3 Dev Module*, USB CDC On Boot *Enabled*, flash *4MB*, partition *Default 4MB with spiffs*, PSRAM *Disabled*.
+3. Upload the sketch, then the contents of `source/FreeGamesAP/data/` to SPIFFS.
+4. Dump the flash into one file (`esp32` or `esp32s3`):
+
+```
 py -m esptool --chip esp32 --port COM4 --baud 115200 read-flash 0 0x400000 factory.bin
+```
 
-text
-6. Copy that `factory.bin` into `firmware/esp32-wroom-32u/factory.bin`.
-7. Commit and push. GitHub Pages serves the new file automatically.
+5. Copy it into `firmware/<board>/factory.bin`.
 
----
+## 📁 Repo layout
 
-## Tested on
-
-| Board | Chip | Flash | Status |
-|---|---|---|---|
-| ESP32-WROOM-32U | ESP32-D0WD-V3 | 4 MB | ✅ Tested |
-| ESP32-C3 Mini | ESP32-C3 | TBD | ⏳ Not yet |
-| ESP32-S3 | ESP32-S3 | TBD | ⏳ Not yet |
-| ESP32-S3 Mini | ESP32-S3 | TBD | ⏳ Not yet |
-| ESP32 DevKit V1 | ESP32 | 4 MB | ✅ Tested |
-
----
-
-## Repo layout
+```
 .
-├── index.html # flasher page (ESP Web Tools 10.1.0)
-├── .nojekyll
-├── README.md
-├── manifests/ # one manifest per board
-│ └── esp32-wroom-32u.json
+├── index.html                  # web flasher page
+├── play/                       # the games, playable online
+├── manifests/                  # one flashing recipe per board
 ├── firmware/
-│ └── esp32-wroom-32u/
-│ └── factory.bin # merged full-flash image
+│   ├── esp32-wroom-32u/factory.bin
+│   ├── esp32-s3/factory.bin
+│   └── esp32-s3-mini/factory.bin
 └── source/
-└── FreeGames/
-├── FreeGames.ino
-└── data/ # index.html + games/ (SPIFFS image)
+    └── FreeGamesAP/            # sketch, RoomData.h and data/ (games)
+```
 
-text
+<details>
+<summary><b>Troubleshooting</b></summary>
 
----
+- **No port in the browser dialog:** use a data cable, try another USB port, install the CP210x or CH340 driver.
+- **Flashing fails or times out:** hold BOOT, press RESET, release BOOT, then retry.
+- **Button does nothing:** Web Serial only works in desktop Chrome, Edge and Opera.
+- **Page doesn't open by itself:** open `http://192.168.4.1`. Some phones need you to tap "Sign in to network".
+- **Fonts look different on the board:** the games use online fonts and fall back to system fonts offline. That's expected.
 
-## Manifest rules
+</details>
 
-- Paths are **relative to the manifest file** (e.g. `../firmware/esp32-wroom-32u/factory.bin`).
-- Offsets are **decimal**.
-- `chipFamily` must match the chip (`ESP32`, `ESP32-C3`, `ESP32-S3`).
-- This repo uses **one merged `factory.bin` at offset `0`** per board.
+## 🗺️ Roadmap
 
-Reference offsets inside the merged image (4 MB ESP32 default):
+- [x] **v1.0** Web flasher for ESP32-WROOM-32U and DevKit V1
+- [x] **v1.1** Play-online page and Releases
+- [x] **v1.2** 8 players, live count, auto-open page, Tic Tac Toe with a friend, ESP32-S3 boards
+- [ ] **v1.3** Storage display, upload and delete games with a login, ESP32-C3 support
+- [ ] **v2.0** Games sent in by the community, with author credits
+- [ ] **v2.1** ESP8266 / Wemos D1 Mini
 
-| Part | Offset |
-|---|---|
-| bootloader | 0x1000 |
-| partition table | 0x8000 |
-| boot_app0 | 0xe000 |
-| app | 0x10000 |
-| SPIFFS | 0x290000 |
+## 👤 Author
 
-These are inside the merged file. The manifest still uses a single part at offset `0`.
-
----
-
-## Offline note
-
-The games load Google Fonts, which fail offline on the board's Wi-Fi, so system fonts are used there. That is expected and fine.
-
----
-
-## Browser support
-
-| Browser | Works? |
-|---|---|
-| Chrome 89+ (desktop) | ✅ |
-| Edge 89+ (desktop) | ✅ |
-| Opera 75+ (desktop) | ✅ |
-| Firefox | ❌ |
-| Safari | ❌ |
-| Mobile browsers | ❌ |
-
-Web Serial API is required.
-
----
-
-## Troubleshooting
-
-- **No serial port in the browser dialog** — use a data USB cable, try another port, install the CP210x or CH340 driver.
-- **Failed to download manifest** — open `manifests/esp32-wroom-32u.json` directly in the browser. If it 404s, check GitHub Pages is enabled and the path matches exactly.
-- **Flashing fails or times out** — hold **BOOT**, press **RESET**, release **BOOT**, then retry.
-- **404 on firmware files** — confirm `firmware/esp32-wroom-32u/factory.bin` exists and the path in the manifest matches exactly (case-sensitive).
-- **Button does nothing** — you are not using Chrome or Edge on desktop.
-- **Board boots but no page** — connect to the board's Wi-Fi AP and open `http://192.168.4.1`.
-
----
-
-## Credits
-
-- Built by **Kamil Hassan**.
+- Made by **Kamil Hassan**.
 - Flashing powered by [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
